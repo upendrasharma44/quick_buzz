@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  packages:
+    name: Package tests (macOS)
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - name: BuzzCore
+        run: swift test --package-path Packages/BuzzCore
+      - name: BuzzMultipeer
+        run: swift test --package-path Packages/BuzzMultipeer
+
+  app:
+    name: App build + tests (iOS Simulator)
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate project
+        run: xcodegen generate
+      - name: Pick a simulator
+        id: sim
+        run: |
+          UDID=$(xcrun simctl list devices available --json | python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; print(next(x["udid"] for k in d for x in d[k] if "iPhone" in x["name"]))')
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+      - name: Build and test
+        run: |
+          xcodebuild test \
+            -project QuickBuzz.xcodeproj \
+            -scheme QuickBuzz \
+            -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.udid }}" \
+            CODE_SIGNING_ALLOWED=NO -quiet
