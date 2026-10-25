@@ -79,7 +79,9 @@ Built on 2026-10-25; the stage closes once the two-phone script in `docs/testing
 
 ### Stage 3 — Buzz rounds → v1.0 free release
 Host console (Arm / Reset / Next / End, live ranking, points), player buzzer with haptics and
-sound, results view, in-memory scoreboard, icon and store assets, TestFlight, App Store v1.0.
+sound, results view, in-memory scoreboard, store assets, TestFlight, App Store v1.0.
+App icon already done (2026-10-25): buzzer + lightning bolt + signal arcs, light/dark/tinted
+variants generated from `design/icon/make-icon.sh`.
 
 ### Stage 4 — Robustness & fairness polish (v1.x)
 RTT estimation and confidence display, optional tie threshold, host approval / session PIN,

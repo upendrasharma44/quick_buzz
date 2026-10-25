@@ -43,6 +43,7 @@ xcodebuild test -project QuickBuzz.xcodeproj -scheme QuickBuzz \
 | `Packages/BuzzCore` | Models, wire protocol, host/player engines and sessions, `GameTransport`, loopback transport |
 | `Packages/BuzzMultipeer` | MultipeerConnectivity transport |
 | `Config/` | Build settings; per-machine `Local.xcconfig` (git-ignored) |
+| `design/icon/` | App icon source; run `design/icon/make-icon.sh` (needs `librsvg`) to regenerate light/dark/tinted PNGs |
 | `docs/` | [Roadmap](docs/roadmap.md) · [Architecture](docs/architecture.md) · [Protocol](docs/protocol.md) · [Testing](docs/testing.md) · [ADRs](docs/adr/) |
 
 ## License

@@ -28,6 +28,9 @@ players), optionally `-QBRoute host|join|join-first` and `-profile.name <name>`.
 - `Packages/BuzzMultipeer` — `MultipeerTransport` (MultipeerConnectivity → `GameTransport`).
 - `Config/` — xcconfig files; `Local.xcconfig` is per-machine and git-ignored.
 - `docs/` — roadmap, architecture, protocol, testing, ADRs. **Docs are part of every change.**
+- `design/icon/` — app icon source. Edit colours/shapes in `make-icon.sh` and re-run it
+  (needs `brew install librsvg`); it writes the light/dark/tinted PNGs into `AppIcon.appiconset`.
+  Never hand-edit the PNGs.
 
 ## Mandatory rules
 
