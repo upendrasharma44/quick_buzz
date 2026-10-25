@@ -53,6 +53,26 @@ public final class HostSession {
         await deliver(engine.kick(playerID))
     }
 
+    /// Open the current round for buzzing.
+    public func arm() async {
+        await deliver(engine.arm())
+    }
+
+    /// Clear the round (ranking and lockouts) and wait idle for the next question.
+    public func reset() async {
+        await deliver(engine.reset())
+    }
+
+    /// Clear the round and open the next one straight away.
+    public func nextRound() async {
+        await deliver(engine.nextRound())
+    }
+
+    /// Add (or, with a negative value, take back) points.
+    public func award(points: Int, to playerID: PlayerID) async {
+        await deliver(engine.award(points: points, to: playerID))
+    }
+
     /// Tell everyone the game is over, then disconnect. Idempotent.
     public func end() async {
         guard phase != .ended else { return }
@@ -117,5 +137,5 @@ public final class HostSession {
 }
 
 enum Log {
-    static let session = Logger(subsystem: "com.upendrasharma.quickbuzz", category: "session")
+    static let session = Logger(subsystem: "com.upendrasharma.buzzlight", category: "session")
 }

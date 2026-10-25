@@ -14,7 +14,7 @@ struct NameEntryView: View {
             Image(systemName: "bolt.circle.fill")
                 .font(.system(size: 88))
                 .foregroundStyle(.tint)
-            Text("Welcome to QuickBuzz")
+            Text("Welcome to BuzzLight")
                 .font(.largeTitle.bold())
                 .multilineTextAlignment(.center)
             Text("What should other players call you?")

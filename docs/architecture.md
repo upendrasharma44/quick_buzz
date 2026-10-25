@@ -1,6 +1,6 @@
 # Architecture
 
-QuickBuzz is a host-authoritative, peer-to-peer buzzer game. One device is the **host**
+BuzzLight is a host-authoritative, peer-to-peer buzzer game. One device is the **host**
 (coordinator); every other device is a **player**. All game logic, including the session
 lifecycle, runs in pure Swift packages; the app target contains SwiftUI views and small services.
 
@@ -29,7 +29,9 @@ lifecycle, runs in pure Swift packages; the app target contains SwiftUI views an
 | `BuzzMultipeer` | BuzzCore, MultipeerConnectivity | `MultipeerTransport`: discovery and messaging over Wi-Fi / peer-to-peer Wi-Fi / Bluetooth. |
 | `App` | BuzzCore, BuzzMultipeer | Views and navigation; `Profile` persistence; `AppServices.makeTransport` (Multipeer, or loopback in demo mode); DEBUG demo mode. |
 
-Decisions are recorded in `docs/adr/` (session layer and connection lifecycle: ADR 0004).
+Decisions are recorded in `docs/adr/` (session layer and connection lifecycle: ADR 0004;
+proposed Stage 4 ranking by clock-offset-corrected press timestamps: ADR 0005;
+rename from QuickBuzz to BuzzLight: ADR 0006).
 
 ## Layers and data flow
 
@@ -83,7 +85,12 @@ Rules (all enforced in `HostEngine.handleBuzz`):
 8. `end()` makes every later input a no-op.
 
 A disconnected player is removed from `players`; their `scores` entry is kept, so a reconnect
-(same `PlayerID`) restores them with their points.
+(same `PlayerID`) restores them with their points. Both engines keep `knownNames` (everyone ever in
+the session; never shrinks), so rankings and scores stay labelled after someone leaves, and the
+`welcome` snapshot carries those names to late joiners. `award(points:to:)` accepts negative points
+(undo), works for departed players, and never for the host. `Standings.compute` (exposed as
+`engine.standings`) orders the scoreboard: points, then present before departed, then name, with
+shared positions on equal points ("1, 1, 3"); the host is never listed.
 
 ## Player state (`PlayerEngine.status`)
 
@@ -157,7 +164,7 @@ func send(_:to:) / broadcast(_:) / stop() // stop is idempotent
 
 ### `MultipeerTransport`
 
-- Service type `quickbuzz` (`NSBonjourServices`: `_quickbuzz._tcp`, `_quickbuzz._udp`).
+- Service type `buzzlight` (`NSBonjourServices`: `_buzzlight._tcp`, `_buzzlight._udp`).
 - Discovery info: `session` = session name (≤ 120 bytes), `v` = protocol version → `DiscoveredHost.isCompatible`.
 - `MCPeerID.displayName` = the user's name, trimmed, ≤ 63 UTF-8 bytes, `"Player"` if empty.
 - Encryption `.required`; data sent `.reliable` as `GameMessageCodec` JSON.
@@ -193,11 +200,15 @@ In-process routing through a `LoopbackNetwork` actor, used by tests, previews an
 | `AppServices` | Injected via environment. `makeTransport(name)` returns a `MultipeerTransport`, or a loopback transport in demo mode. |
 | `RootView` | `NameEntryView` until a name exists, then `HomeView`. |
 | `HostFlowView` / `JoinFlowView` | Create the session in `.task`, end/leave on exit, keep the screen awake. `JoinFlowView` forwards `scenePhase` `.background`/`.active` to the session. Back button hidden: exit goes through End/Leave so the session is always closed. |
-| `JoinBrowserView` rows | Hosts on another protocol version are shown disabled with "Needs the same QuickBuzz version". |
-| `HostLobbyView` | Session name, live roster, swipe/context-menu kick, disabled "Start round" (Stage 3). |
+| `JoinBrowserView` rows | Hosts on another protocol version are shown disabled with "Needs the same BuzzLight version". |
+| `HostGameView` | The host console (it is also the lobby before anyone joins): round status line, `ResultsSection` with ±1 awards and lockouts, `ScoreboardSection` with kick, bottom bar Arm buzzers / Cancel round / Reset + Next round. Buzz sound and haptic when the first buzz arrives. |
 | `JoinBrowserView` | Nearby games, per-row connecting spinner, failed-join notice, Local Network troubleshooting after 8 s. |
-| `PlayerWaitingView` / `SessionEndedView` | Joined state with roster and reconnect banner; end reasons with a way home. |
-| `DemoHub` | DEBUG demo mode (`-QBDemo YES`): loopback network, a joinable "Quiz Night (demo)" game, and simulated players that join the user's game. |
+| `PlayerGameView` | The joined player's screen: points chip, round number, `BuzzerButton`, a caption (who won / what to do), Scores sheet (current round + standings + host), reconnect banner. Announces the winner to VoiceOver. |
+| `BuzzerButton` | Fires on **touch-down** (`DragGesture(minimumDistance: 0)`, once per touch) and calls `PlayerSession.buzz()` synchronously; look, haptics and VoiceOver value derive from `PlayerStatus`. Sound plays *after* the engine call. |
+| `ResultsSection` / `ScoreboardSection` | Shared list sections: ranking ("First!" / "+Δ ms", lockout line, optional ±1) and standings (shared positions, departed players dimmed, optional ±1 and kick). |
+| `EndOfGameView` / `SessionEndedView` | Final standings and a way home: host after End, player after any end reason. |
+| `SoundPlayer` | `AVAudioPlayer` primed ahead of time, `.ambient` session (mixes, respects the silent switch); muted by Settings → Sound effects (`settings.sound`). The WAV is generated by `design/sound/make-sounds.py`. |
+| `DemoHub` | DEBUG demo mode (`-BLDemo YES`): loopback network; a joinable "Quiz Night (demo)" game that runs rounds by itself once a real player joins; bots that join the user's game and buzz 0.25–1.2 s after arming (sometimes too early). `-BLDemoAutoPlay` self-plays the user's own game, `-BLDemoAutoBuzz fast\|early` presses the user's buzzer. Timings are injectable (`DemoHub.Timing`) for tests. |
 
 ## Concurrency model
 

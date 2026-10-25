@@ -19,8 +19,8 @@ import Foundation
 /// - A session links all of its members to each other, not just to the host, so a player is also
 ///   connected to the other players. Sessions address players' messages to the host explicitly.
 public final class MultipeerTransport: NSObject, GameTransport, @unchecked Sendable {
-    /// Must match `NSBonjourServices` in the app's Info.plist (`_quickbuzz._tcp` / `_quickbuzz._udp`).
-    public static let serviceType = "quickbuzz"
+    /// Must match `NSBonjourServices` in the app's Info.plist (`_buzzlight._tcp` / `_buzzlight._udp`).
+    public static let serviceType = "buzzlight"
     /// An `MCSession` holds at most 8 peers including the host.
     public static let maxPlayers = kMCSessionMaximumNumberOfPeers - 1
     /// How long a player's invitation waits for the host before MultipeerConnectivity gives up.

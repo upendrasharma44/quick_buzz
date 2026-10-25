@@ -1,6 +1,6 @@
 # Roadmap
 
-The plan for QuickBuzz, executed one stage at a time. Each stage has a GitHub milestone and a
+The plan for BuzzLight, executed one stage at a time. Each stage has a GitHub milestone and a
 tracking issue whose checklist is the authoritative task list. **Update the status table here
 and tick the issue checklist whenever a stage changes state.**
 
@@ -14,7 +14,7 @@ tests and docs → PR referencing the issue → merge → update status → clos
 | 0 | Scaffold & plan tracking | [#1](https://github.com/upendrasharma44/quick_buzz/issues/1) | ✅ Done (2026-10-25) | — |
 | 1 | Domain core (engines, protocol, loopback) | [#2](https://github.com/upendrasharma44/quick_buzz/issues/2) | ✅ Done (2026-10-25) | — |
 | 2 | Discovery & lobby over Multipeer | [#3](https://github.com/upendrasharma44/quick_buzz/issues/3) | 🔧 Built, awaiting 2-phone test | v0.2 (dev) |
-| 3 | Buzz rounds | [#4](https://github.com/upendrasharma44/quick_buzz/issues/4) | ⬜ Not started | **v1.0 free** |
+| 3 | Buzz rounds | [#4](https://github.com/upendrasharma44/quick_buzz/issues/4) | 🔧 Built; awaiting 3-phone test + App Store submission | **v1.0 free** |
 | 4 | Robustness & fairness polish | [#5](https://github.com/upendrasharma44/quick_buzz/issues/5) | ⬜ Not started | v1.x |
 | 5 | Plus tier (StoreKit 2, $0.99/yr) | [#6](https://github.com/upendrasharma44/quick_buzz/issues/6) | ⬜ Not started | v1.2 |
 | 6 | Accounts & session history (Firebase) | [#7](https://github.com/upendrasharma44/quick_buzz/issues/7) | ⬜ Not started | v2.0 |
@@ -49,6 +49,8 @@ and internet rooms.
 - Ranking = order buzzes arrive at the host; deltas from a monotonic host clock. Device clocks are never compared.
 - Stale-round buzzes ignored; duplicates dropped; a buzz before the round is armed locks that player out for the round.
 - Stage 4 adds RTT confidence and an optional tie threshold; the host remains authoritative.
+  Proposed design: per-player clock-offset estimation and local press timestamps,
+  arrival order kept as fallback (`docs/adr/0005-clock-offset-press-timestamp-ranking.md`).
 
 ## Stages
 
@@ -77,15 +79,26 @@ Built on 2026-10-25; the stage closes once the two-phone script in `docs/testing
   (rename), keep-awake during games, DEBUG demo mode with simulated players.
 - Remaining: run the two-phone script on hardware and record the results in #3.
 
-### Stage 3 — Buzz rounds → v1.0 free release
-Host console (Arm / Reset / Next / End, live ranking, points), player buzzer with haptics and
-sound, results view, in-memory scoreboard, store assets, TestFlight, App Store v1.0.
-App icon already done (2026-10-25): buzzer + lightning bolt + signal arcs, light/dark/tinted
-variants generated from `design/icon/make-icon.sh`.
+### Stage 3 — Buzz rounds → v1.0 free release 🔧
+Built on 2026-10-25 (ranking stays host arrival order; ADR 0005 follows in Stage 4 by decision).
+- Host console (it is also the lobby): Arm / Cancel / Reset / Next round / End, live ranking with Δms,
+  lockouts, ±1 awards, scoreboard with kick, buzz sound + haptic on the first buzz.
+- Player buzzer firing on touch-down, with sound, haptics and VoiceOver; points chip, round caption,
+  scores sheet; final standings for everyone when the game ends.
+- Session API (`arm`, `reset`, `nextRound`, `award`, `buzz`), name cache for departed players,
+  `Standings`; demo mode plays real rounds; `scripts/screenshots.sh`.
+- App renamed **QuickBuzz → BuzzLight** before release (ADR 0006).
+- Release prep: v1.0.0 (1), iPhone-only, launch screen, export-compliance flag,
+  `docs/app-store/` (metadata, review notes, privacy policy, screenshots), `docs/release.md`.
+- App icon (2026-10-25): buzzer + lightning bolt + signal arcs, light/dark/tinted, from `design/icon/make-icon.sh`.
+- Remaining (owner): 3-phone script in `docs/testing.md`, App Store Connect record, TestFlight,
+  submission, then tag `v1.0.0` — see `docs/release.md`.
 
 ### Stage 4 — Robustness & fairness polish (v1.x)
-RTT estimation and confidence display, optional tie threshold, host approval / session PIN,
-duplicate-name handling, host handoff spike, accessibility, localization scaffold, iPad layout.
+RTT estimation and confidence display, optional tie threshold (design proposed in ADR 0005:
+clock-offset estimation + local press timestamps, host still the only arbiter), host approval /
+session PIN, duplicate-name handling, host handoff spike, accessibility, localization scaffold,
+iPad layout.
 
 ### Stage 5 — Plus tier (StoreKit 2)
 `BuzzStore` package: `plus.yearly` auto-renewable subscription at $0.99/yr, entitlement object

@@ -84,7 +84,7 @@ public final class PlayerSession {
     public func join(_ host: DiscoveredHost) async {
         guard phase == .browsing else { return }
         guard host.isCompatible else {
-            notice = "\(host.sessionName) uses a different version of QuickBuzz. Update both phones and try again."
+            notice = "\(host.sessionName) uses a different version of BuzzLight. Update both phones and try again."
             return
         }
         notice = nil
@@ -99,6 +99,16 @@ public final class PlayerSession {
 
     public func leave() async {
         await finish(.left)
+    }
+
+    /// Press the buzzer. Deliberately synchronous: the engine registers the press in the same
+    /// main-actor turn as the touch-down that triggered it, and only the send is deferred. Keep it
+    /// that way (ADR 0005 will stamp the press here).
+    public func buzz() {
+        guard case .joined = phase else { return }
+        let outbounds = engine.buzz()
+        guard !outbounds.isEmpty else { return }
+        Task { await deliver(outbounds) }
     }
 
     /// Call when the scene moves to the background. The system drops the connection there, and the

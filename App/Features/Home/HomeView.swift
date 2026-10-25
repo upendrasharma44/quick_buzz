@@ -18,7 +18,7 @@ struct HomeView: View {
                 Image(systemName: "bolt.circle.fill")
                     .font(.system(size: 96))
                     .foregroundStyle(.tint)
-                Text("QuickBuzz")
+                Text("BuzzLight")
                     .font(.largeTitle.bold())
                 Text("Who buzzed first?")
                     .foregroundStyle(.secondary)
@@ -60,7 +60,7 @@ struct HomeView: View {
 
     private func goHome() { path.removeAll() }
 
-    /// DEBUG: `-QBRoute host|join|join-first` opens straight into a flow (for demos/screenshots).
+    /// DEBUG: `-BLRoute host|join|join-first` opens straight into a flow (for demos/screenshots).
     private static func launchRoute() -> [Route] {
         #if DEBUG
         switch UserDefaults.standard.string(forKey: LaunchOption.route) {

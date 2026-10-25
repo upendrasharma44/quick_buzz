@@ -39,6 +39,7 @@ struct JoinFlowView: View {
                 )
                 session = created
                 await created.start()
+                services.demo?.playerJoined(created)
             }
             .onChange(of: session?.hosts.first) { _, first in
                 guard autoJoinFirst, !didAutoJoin, let first, let session else { return }
@@ -66,9 +67,10 @@ struct JoinFlowView: View {
             case .idle, .browsing, .connecting:
                 JoinBrowserView(session: session)
             case .joined, .reconnecting:
-                PlayerWaitingView(session: session)
+                PlayerGameView(session: session)
             case .ended(let reason):
-                SessionEndedView(reason: reason, onDone: onExit)
+                SessionEndedView(reason: reason, standings: session.engine.standings,
+                                 me: session.engine.me.id, onDone: onExit)
             }
         } else {
             ProgressView()
