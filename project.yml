@@ -76,6 +76,8 @@ schemes:
       # DEBUG-only demo mode (see docs/testing.md). Tick these in Edit Scheme → Arguments.
       commandLineArguments:
         "-QBDemo YES": false
+        "-QBDemoAutoPlay YES": false
+        "-QBDemoAutoBuzz fast": false
         "-QBRoute host": false
         "-QBRoute join": false
         "-QBRoute join-first": false

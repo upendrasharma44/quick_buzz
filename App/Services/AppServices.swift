@@ -11,6 +11,7 @@ final class AppServices {
     @ObservationIgnored let makeTransport: @MainActor (_ displayName: String) async -> any GameTransport
     /// Present only in DEBUG demo mode (`-QBDemo YES`).
     @ObservationIgnored let demo: DemoHub?
+    @ObservationIgnored let sound = SoundPlayer()
 
     init(makeTransport: @escaping @MainActor (String) async -> any GameTransport, demo: DemoHub? = nil) {
         self.makeTransport = makeTransport
@@ -20,7 +21,10 @@ final class AppServices {
     static func live(defaults: UserDefaults = .standard) -> AppServices {
         #if DEBUG
         if defaults.bool(forKey: LaunchOption.demo) {
-            let demo = DemoHub()
+            let demo = DemoHub(
+                autoPlayOwnGame: defaults.bool(forKey: LaunchOption.demoAutoPlay),
+                autoBuzz: defaults.string(forKey: LaunchOption.demoAutoBuzz).flatMap(DemoHub.AutoBuzz.init)
+            )
             Task { await demo.startDemoHost() }
             return AppServices(makeTransport: { await demo.network.makeTransport(name: $0) }, demo: demo)
         }
@@ -35,4 +39,8 @@ enum LaunchOption {
     static let demo = "QBDemo"
     /// Open straight into a flow: `host`, `join`, or `join-first` (join the first game found).
     static let route = "QBRoute"
+    /// With `QBDemo`: your own hosted game also runs rounds by itself (arm, award winner, reset).
+    static let demoAutoPlay = "QBDemoAutoPlay"
+    /// With `QBDemo`: press your own buzzer for you: `fast` (usually win) or `early` (locked out).
+    static let demoAutoBuzz = "QBDemoAutoBuzz"
 }

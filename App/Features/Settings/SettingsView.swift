@@ -1,10 +1,12 @@
 import SwiftUI
 
-/// Edit the display name. Presented as a sheet from Home; changes apply to the next game.
+/// Display name (applies to the next game, saved with Save) and sound (applies immediately).
+/// Presented as a sheet from Home.
 struct SettingsView: View {
     @Environment(Profile.self) private var profile
     @Environment(\.dismiss) private var dismiss
     @State private var draft = ""
+    @AppStorage(SoundPlayer.enabledKey) private var soundEnabled = true
 
     var body: some View {
         NavigationStack {
@@ -17,6 +19,13 @@ struct SettingsView: View {
                     Text("Display name")
                 } footer: {
                     Text("Shown to other players. Up to \(Profile.maxNameLength) characters.")
+                }
+                Section {
+                    Toggle("Sound effects", isOn: $soundEnabled)
+                } header: {
+                    Text("Game")
+                } footer: {
+                    Text("The buzzer sound follows the silent switch. Haptics are always on.")
                 }
                 Section("About") {
                     LabeledContent("Version", value: Bundle.main.appVersion)
