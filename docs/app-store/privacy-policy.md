@@ -17,8 +17,9 @@ accounts, no analytics, no advertising and no third-party SDKs.
 | A random player identifier | Created on your device and sent to the other phones in your game, so a player who briefly disconnects keeps their score. | On your device until you delete the app. On other phones only for that game. |
 | Buzzes, rankings and scores | Exchanged between the phones in the game. | In memory for that game only; nothing is saved after it ends. |
 
-All of this travels directly between nearby devices using Apple's MultipeerConnectivity (Wi-Fi or
-Bluetooth), encrypted by iOS. None of it is sent to the developer or to any server.
+All of this travels directly between nearby devices over Wi-Fi (your local network, or a direct
+phone-to-phone Wi-Fi link) using Apple's Network framework, encrypted with TLS. None of it is sent
+to the developer or to any server.
 
 ## Local Network permission
 

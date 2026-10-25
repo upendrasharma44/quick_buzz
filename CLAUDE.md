@@ -8,7 +8,9 @@ device ranks who buzzed first. Staged delivery; see `docs/roadmap.md` for the pl
 ```sh
 xcodegen generate                                   # regenerate BuzzLight.xcodeproj (git-ignored)
 swift test --package-path Packages/BuzzCore         # fast, pure-Swift domain + session tests (run these first)
-swift test --package-path Packages/BuzzMultipeer
+swift test --package-path Packages/BuzzNetwork
+swift test --package-path Packages/BuzzMultipeer      # legacy transport (DEBUG A/B only)
+BUZZLIGHT_LIVE_NETWORK=1 swift test --package-path Packages/BuzzNetwork       # real Network.framework on this Mac
 BUZZLIGHT_LIVE_MULTIPEER=1 swift test --package-path Packages/BuzzMultipeer   # real Multipeer on this Mac
 xcodebuild test -project BuzzLight.xcodeproj -scheme BuzzLight \
   -destination 'platform=iOS Simulator,name=iPhone 17' -quiet   # app + all package tests
@@ -26,7 +28,8 @@ players), optionally `-BLRoute host|join|join-first` and `-profile.name <name>`.
   `Profile`, `AppServices`, `SoundPlayer`, `DemoHub`. No game logic.
 - `Packages/BuzzCore` — models, wire protocol, `GameTransport`, `HostEngine`, `PlayerEngine`,
   `HostSession`/`PlayerSession` (connection lifecycle), `LoopbackTransport`. No UIKit.
-- `Packages/BuzzMultipeer` — `MultipeerTransport` (MultipeerConnectivity → `GameTransport`).
+- `Packages/BuzzNetwork` — `NetworkTransport` (Network.framework → `GameTransport`; ADR 0007). The real transport.
+- `Packages/BuzzMultipeer` — legacy `MultipeerTransport`, DEBUG A/B only; delete when ADR 0007 is accepted.
 - `Config/` — xcconfig files; `Local.xcconfig` is per-machine and git-ignored.
 - `docs/` — roadmap, architecture, protocol, testing, ADRs. **Docs are part of every change.**
 - `design/icon/` — app icon source. Edit colours/shapes in `make-icon.sh` and re-run it
@@ -52,6 +55,15 @@ players), optionally `-BLRoute host|join|join-first` and `-profile.name <name>`.
 7. Work on a branch per stage (`stage-N-<slug>`), open a PR, and link the stage issue.
 
 ## Known pitfalls
+
+- Phones need **Wi-Fi switched on**; a shared network isn't required with `NetworkTransport`
+  (`includePeerToPeer`). Nothing in the app may claim Bluetooth play: MultipeerConnectivity hasn't used
+  Bluetooth since iOS 11, and Network.framework doesn't either.
+- `NetworkTransport` receive loop: a WebSocket close frame or `context.isFinal` must cancel the connection;
+  otherwise `receiveMessage` completes empty forever and disconnects surface only via keepalive (~7 s).
+  Live test `discoverConnectExchangeAndDisconnect` asserts < 3 s.
+- `NetworkTransport` and `MultipeerTransport` use different Bonjour types (`_buzzlight._tcp` vs
+  `_buzzlight-mc._tcp`); every phone in a game must use the same transport (DEBUG Settings → Developer).
 
 - The buzzer must act on **touch-down** and call `PlayerSession.buzz()` synchronously in the gesture
   callback (no `Task`/`await` first); sound and anything else come after. ADR 0005 will stamp the press

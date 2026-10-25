@@ -90,7 +90,7 @@ private struct LocalNetworkHint: View {
 
     var body: some View {
         VStack(spacing: 10) {
-            Text("Still nothing? Check that **Local Network** access is on for BuzzLight, and that Wi-Fi or Bluetooth is on.")
+            Text("Still nothing? Make sure **Wi-Fi is switched on** (you don't need to join a network) and that **Local Network** access is on for BuzzLight.")
                 .font(.footnote)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)

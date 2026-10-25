@@ -2,8 +2,9 @@ import BuzzCore
 import Foundation
 @preconcurrency import MultipeerConnectivity
 
-/// `GameTransport` over Apple's MultipeerConnectivity (infrastructure Wi-Fi, peer-to-peer Wi-Fi
-/// and Bluetooth). Star topology: the host advertises and accepts invitations; players browse and
+/// `GameTransport` over Apple's MultipeerConnectivity. **Legacy**: replaced by `NetworkTransport`
+/// (ADR 0007) and kept only for DEBUG A/B device tests. In practice MC needs every phone on the same
+/// Wi-Fi network on current iOS; it has not used Bluetooth since iOS 11. Star topology: the host advertises and accepts invitations; players browse and
 /// invite the host. See docs/architecture.md and ADRs 0001 and 0004.
 ///
 /// Threading: MultipeerConnectivity calls the delegate methods on its own private queues. All

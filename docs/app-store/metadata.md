@@ -42,8 +42,10 @@ HOW IT WORKS
 • The host awards points with a tap and moves on to the next round. Final scores at the end.
 
 NO ACCOUNTS, NO INTERNET, NO ADS
-• Works on the same Wi-Fi, or with Wi-Fi off over Bluetooth, phone to phone.
-  <!-- Keep this line only once test 2.14 (Bluetooth-only) in docs/testing.md has passed on devices. -->
+• Every phone just needs Wi-Fi switched on — on the same network, or connected directly phone to
+  phone where there's no network to share.
+  <!-- Keep the second half only once connectivity matrix rows N2–N3 (docs/testing.md) pass on
+       devices with the Network.framework transport; otherwise say "on the same Wi-Fi network". -->
 • No sign-up and no data collected. Nothing leaves the room.
 • Up to 8 phones in a game: one host and seven players.
 
