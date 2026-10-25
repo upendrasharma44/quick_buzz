@@ -1,6 +1,6 @@
 # Roadmap
 
-The plan for QuickBuzz, executed one stage at a time. Each stage has a GitHub milestone and a
+The plan for BuzzLight, executed one stage at a time. Each stage has a GitHub milestone and a
 tracking issue whose checklist is the authoritative task list. **Update the status table here
 and tick the issue checklist whenever a stage changes state.**
 

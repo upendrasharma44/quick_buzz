@@ -43,7 +43,7 @@ jobs:
       - name: Build and test
         run: |
           xcodebuild test \
-            -project QuickBuzz.xcodeproj \
-            -scheme QuickBuzz \
+            -project BuzzLight.xcodeproj \
+            -scheme BuzzLight \
             -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.udid }}" \
             CODE_SIGNING_ALLOWED=NO -quiet

@@ -1,7 +1,7 @@
 import BuzzCore
 import Foundation
 import Testing
-@testable import QuickBuzz
+@testable import BuzzLight
 
 @MainActor
 @Suite("Profile")

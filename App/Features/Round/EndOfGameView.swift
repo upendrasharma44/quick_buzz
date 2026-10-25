@@ -70,8 +70,8 @@ struct SessionEndedView: View {
         switch reason {
         case .left, .hostEnded: "Thanks for playing!"
         case .kicked: "The host removed you. You can join another game."
-        case .connectionLost: "The host's phone went out of range or closed QuickBuzz."
-        case .incompatibleVersion: "Update QuickBuzz on both phones from the App Store and try again."
+        case .connectionLost: "The host's phone went out of range or closed BuzzLight."
+        case .incompatibleVersion: "Update BuzzLight on both phones from the App Store and try again."
         }
     }
 

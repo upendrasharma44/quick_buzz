@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generates QuickBuzz's sound effects as 16-bit mono WAV files (Python standard library only).
+"""Generates BuzzLight's sound effects as 16-bit mono WAV files (Python standard library only).
 
 Usage: python3 design/sound/make-sounds.py
 Writes App/Resources/Sounds/*.wav. Edit the parameters here and re-run; never hand-edit the WAVs.

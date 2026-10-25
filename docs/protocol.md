@@ -26,7 +26,7 @@ Before any frame is exchanged, players find hosts through Bonjour via MultipeerC
 
 | Item | Value |
 |---|---|
-| Service type | `quickbuzz` (Info.plist `NSBonjourServices`: `_quickbuzz._tcp`, `_quickbuzz._udp`) |
+| Service type | `buzzlight` (Info.plist `NSBonjourServices`: `_buzzlight._tcp`, `_buzzlight._udp`) |
 | Who advertises | Host only. Players browse and send the invitation; the host auto-accepts up to 7 players. |
 | Discovery info | `session` → session name shown in the Join list (≤ 120 bytes, default "<name>'s game"); `v` → `Envelope.currentVersion` |
 | Invitation context | UTF-8 `v=<Envelope.currentVersion>`. The host declines invitations whose context differs, so a mismatched phone never enters the session. |

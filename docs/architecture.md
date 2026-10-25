@@ -1,6 +1,6 @@
 # Architecture
 
-QuickBuzz is a host-authoritative, peer-to-peer buzzer game. One device is the **host**
+BuzzLight is a host-authoritative, peer-to-peer buzzer game. One device is the **host**
 (coordinator); every other device is a **player**. All game logic, including the session
 lifecycle, runs in pure Swift packages; the app target contains SwiftUI views and small services.
 
@@ -30,7 +30,8 @@ lifecycle, runs in pure Swift packages; the app target contains SwiftUI views an
 | `App` | BuzzCore, BuzzMultipeer | Views and navigation; `Profile` persistence; `AppServices.makeTransport` (Multipeer, or loopback in demo mode); DEBUG demo mode. |
 
 Decisions are recorded in `docs/adr/` (session layer and connection lifecycle: ADR 0004;
-proposed Stage 4 ranking by clock-offset-corrected press timestamps: ADR 0005).
+proposed Stage 4 ranking by clock-offset-corrected press timestamps: ADR 0005;
+rename from QuickBuzz to BuzzLight: ADR 0006).
 
 ## Layers and data flow
 
@@ -158,7 +159,7 @@ func send(_:to:) / broadcast(_:) / stop() // stop is idempotent
 
 ### `MultipeerTransport`
 
-- Service type `quickbuzz` (`NSBonjourServices`: `_quickbuzz._tcp`, `_quickbuzz._udp`).
+- Service type `buzzlight` (`NSBonjourServices`: `_buzzlight._tcp`, `_buzzlight._udp`).
 - Discovery info: `session` = session name (≤ 120 bytes), `v` = protocol version → `DiscoveredHost.isCompatible`.
 - `MCPeerID.displayName` = the user's name, trimmed, ≤ 63 UTF-8 bytes, `"Player"` if empty.
 - Encryption `.required`; data sent `.reliable` as `GameMessageCodec` JSON.
@@ -194,11 +195,11 @@ In-process routing through a `LoopbackNetwork` actor, used by tests, previews an
 | `AppServices` | Injected via environment. `makeTransport(name)` returns a `MultipeerTransport`, or a loopback transport in demo mode. |
 | `RootView` | `NameEntryView` until a name exists, then `HomeView`. |
 | `HostFlowView` / `JoinFlowView` | Create the session in `.task`, end/leave on exit, keep the screen awake. `JoinFlowView` forwards `scenePhase` `.background`/`.active` to the session. Back button hidden: exit goes through End/Leave so the session is always closed. |
-| `JoinBrowserView` rows | Hosts on another protocol version are shown disabled with "Needs the same QuickBuzz version". |
+| `JoinBrowserView` rows | Hosts on another protocol version are shown disabled with "Needs the same BuzzLight version". |
 | `HostLobbyView` | Session name, live roster, swipe/context-menu kick, disabled "Start round" (Stage 3). |
 | `JoinBrowserView` | Nearby games, per-row connecting spinner, failed-join notice, Local Network troubleshooting after 8 s. |
 | `PlayerWaitingView` / `SessionEndedView` | Joined state with roster and reconnect banner; end reasons with a way home. |
-| `DemoHub` | DEBUG demo mode (`-QBDemo YES`): loopback network, a joinable "Quiz Night (demo)" game, and simulated players that join the user's game. |
+| `DemoHub` | DEBUG demo mode (`-BLDemo YES`): loopback network, a joinable "Quiz Night (demo)" game, and simulated players that join the user's game. |
 
 ## Concurrency model
 

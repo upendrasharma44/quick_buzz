@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Renders the QuickBuzz app icon (light, dark, tinted) from one SVG template.
+# Renders the BuzzLight app icon (light, dark, tinted) from one SVG template.
 # Usage: design/icon/make-icon.sh        Requires: rsvg-convert (brew install librsvg)
 set -euo pipefail
 

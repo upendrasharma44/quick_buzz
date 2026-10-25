@@ -6,10 +6,10 @@ import Testing
 /// Real MultipeerConnectivity between two transports in this process (Bonjour over loopback).
 /// Opt-in because it needs the local network and is too slow/flaky for CI:
 ///
-///     QUICKBUZZ_LIVE_MULTIPEER=1 swift test --package-path Packages/BuzzMultipeer
+///     BUZZLIGHT_LIVE_MULTIPEER=1 swift test --package-path Packages/BuzzMultipeer
 @Suite(
     "Live Multipeer (opt-in)",
-    .enabled(if: ProcessInfo.processInfo.environment["QUICKBUZZ_LIVE_MULTIPEER"] != nil),
+    .enabled(if: ProcessInfo.processInfo.environment["BUZZLIGHT_LIVE_MULTIPEER"] != nil),
     .serialized
 )
 struct LiveMultipeerTests {

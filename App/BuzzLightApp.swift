@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct QuickBuzzApp: App {
+struct BuzzLightApp: App {
     @State private var profile = Profile()
     @State private var services = AppServices.live()
 

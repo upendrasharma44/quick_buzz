@@ -3,13 +3,13 @@ import Foundation
 
 /// Demo mode: an in-process loopback network with simulated players, so the whole game can be
 /// shown and screenshotted in the simulator without a second device. Only activated in DEBUG
-/// builds via `-QBDemo YES` (see `AppServices.live`).
+/// builds via `-BLDemo YES` (see `AppServices.live`).
 ///
 /// - A joinable game, "Quiz Night (demo)", runs rounds by itself once a real player joins.
 /// - When you host, Cleo, Dev and Eli join one by one.
 /// - Bots buzz 250–1200 ms after the buzzers open, and sometimes press too early.
-/// - `-QBDemoAutoPlay YES` makes your own hosted game run rounds by itself too.
-/// - `-QBDemoAutoBuzz fast|early` presses *your* buzzer for you (screenshots of winning / too early).
+/// - `-BLDemoAutoPlay YES` makes your own hosted game run rounds by itself too.
+/// - `-BLDemoAutoBuzz fast|early` presses *your* buzzer for you (screenshots of winning / too early).
 @MainActor
 final class DemoHub {
     enum AutoBuzz: String {
@@ -79,7 +79,7 @@ final class DemoHub {
         }
     }
 
-    /// The user joined a game. With `-QBDemoAutoBuzz`, their buzzer is pressed for them.
+    /// The user joined a game. With `-BLDemoAutoBuzz`, their buzzer is pressed for them.
     func playerJoined(_ session: PlayerSession) {
         switch autoBuzz {
         case .fast: drive(session, reaction: 80...150, earlyPressChance: 0)

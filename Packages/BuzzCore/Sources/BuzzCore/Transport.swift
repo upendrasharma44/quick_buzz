@@ -39,7 +39,7 @@ public enum TransportError: Error, Hashable, Sendable, LocalizedError {
         case .notConnected: "Not connected."
         case .peerUnknown: "That device is no longer available."
         case .connectionFailed: "Couldn't connect. Make sure both phones are nearby and try again."
-        case .incompatibleVersion: "The other phone is running a different version of QuickBuzz."
+        case .incompatibleVersion: "The other phone is running a different version of BuzzLight."
         case .underlying(let message): message
         }
     }

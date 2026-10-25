@@ -6,8 +6,8 @@
 |---|---|---|
 | Domain + sessions | `swift test --package-path Packages/BuzzCore` | 58 tests. Protocol round trips; `HostEngine` arbitration; `PlayerEngine` statuses; loopback contract; `HostSession`/`PlayerSession` over `LoopbackTransport` (discovery, join, same-name players, failed and timed-out joins, leave, kick, host end, host crash → connection lost, drop → reconnect with score kept) and over `ScriptedTransport` (player traffic goes to the host only, mesh frames and other peers' version errors ignored, incompatible hosts not joinable, reconnect deadline paused in background, late link usable on retry). ~0.5 s. |
 | Transport | `swift test --package-path Packages/BuzzMultipeer` | Service type, player cap, invitation timeout/expiry ordering, version checks (discovery info + invitation context), `PeerRegistry`, display-name sanitising, discovery-info limits, send/connect error paths, `stop()` semantics. |
-| Transport, live | `QUICKBUZZ_LIVE_MULTIPEER=1 swift test --package-path Packages/BuzzMultipeer` | **Real MultipeerConnectivity** between two transports on this Mac: discover → invite → connect → messages both ways → disconnect; invitation through a fresh browser (regression: fails in ~20 s without the deferral, passes in ~1 s with it); the full `HostSession`/`PlayerSession` stack joining, syncing the roster and ending. ~5 s. Opt-in (needs the local network); not run in CI. macOS may ask for Local Network permission for your terminal the first time. |
-| App | `xcodebuild test -project QuickBuzz.xcodeproj -scheme QuickBuzz -destination 'platform=iOS Simulator,name=iPhone 17'` | `Profile` persistence and name rules, demo-mode bots joining, smoke test, plus both package test targets via the scheme. |
+| Transport, live | `BUZZLIGHT_LIVE_MULTIPEER=1 swift test --package-path Packages/BuzzMultipeer` | **Real MultipeerConnectivity** between two transports on this Mac: discover → invite → connect → messages both ways → disconnect; invitation through a fresh browser (regression: fails in ~20 s without the deferral, passes in ~1 s with it); the full `HostSession`/`PlayerSession` stack joining, syncing the roster and ending. ~5 s. Opt-in (needs the local network); not run in CI. macOS may ask for Local Network permission for your terminal the first time. |
+| App | `xcodebuild test -project BuzzLight.xcodeproj -scheme BuzzLight -destination 'platform=iOS Simulator,name=iPhone 17'` | `Profile` persistence and name rules, demo-mode bots joining, smoke test, plus both package test targets via the scheme. |
 
 CI (`.github/workflows/ci.yml`) runs the package and app suites on every PR.
 
@@ -26,13 +26,13 @@ Launch arguments (also available as unticked toggles in Xcode → Edit Scheme �
 
 | Argument | Effect |
 |---|---|
-| `-QBDemo YES` | Use the loopback network. A game "Quiz Night (demo)" with two players is joinable; when you host, Cleo, Dev and Eli join one by one. |
-| `-QBRoute host` / `join` / `join-first` | Open straight into hosting, the Join list, or join the first game found. |
+| `-BLDemo YES` | Use the loopback network. A game "Quiz Night (demo)" with two players is joinable; when you host, Cleo, Dev and Eli join one by one. |
+| `-BLRoute host` / `join` / `join-first` | Open straight into hosting, the Join list, or join the first game found. |
 | `-profile.name Upendra` | Skip onboarding with this name (UserDefaults argument domain). |
 
 ```sh
-xcrun simctl launch --terminate-running-process booted com.upendrasharma.quickbuzz \
-  -profile.name Upendra -QBDemo YES -QBRoute host
+xcrun simctl launch --terminate-running-process booted com.upendrasharma.buzzlight \
+  -profile.name Upendra -BLDemo YES -BLRoute host
 xcrun simctl io booted screenshot host.png
 ```
 
@@ -46,7 +46,7 @@ Setup
    (the file is git-ignored). Run `xcodegen generate`, open the project, run on ≥ 2 iPhones.
 2. All devices on the same Wi-Fi, or Wi-Fi off and Bluetooth on (peer-to-peer path).
 3. On first use accept the *Local Network* permission prompt. If it was denied:
-   Settings → Privacy & Security → Local Network → QuickBuzz.
+   Settings → Privacy & Security → Local Network → BuzzLight.
 
 ### Stage 2 script — discovery & lobby
 
@@ -81,7 +81,7 @@ Record results (date, devices, iOS versions, pass/fail notes) in the Stage 2 iss
 
 ## Debugging tips
 
-- Session logs: Console.app, subsystem `com.upendrasharma.quickbuzz`, category `session`
+- Session logs: Console.app, subsystem `com.upendrasharma.buzzlight`, category `session`
   (failed sends, transport errors).
 - `LoopbackNetwork.stop()` emits `.hostLost` then `.peerDisconnected`; a consumer expecting only
   the latter will hang on the first event.

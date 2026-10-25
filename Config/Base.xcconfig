@@ -1,4 +1,4 @@
-// Shared build settings for the QuickBuzz app target.
+// Shared build settings for the BuzzLight app target.
 // Machine-specific values (your Apple Developer Team ID) live in Config/Local.xcconfig, which is
 // git-ignored. Create it from Config/Local.xcconfig.example to build for a physical iPhone.
 #include? "Local.xcconfig"

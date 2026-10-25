@@ -1,4 +1,4 @@
-# QuickBuzz
+# BuzzLight
 
 iOS buzzer game for people in the same room. Phones on the same Wi-Fi (or nearby over
 Bluetooth) find each other; one person **hosts**, the others **join**; the host arms a round and
@@ -9,20 +9,23 @@ everybody smashes the buzzer — the host's phone shows who was first and by how
 
 See [`docs/roadmap.md`](docs/roadmap.md) for the staged plan and current status.
 
+> Formerly *QuickBuzz*: renamed before the first release ([ADR 0006](docs/adr/0006-rename-quickbuzz-to-buzzlight.md)).
+> The repository keeps its original name, `quick_buzz`.
+
 ## Build
 
 Requires Xcode 26+, Swift 6.2+, and [XcodeGen](https://github.com/yonaskolb/XcodeGen).
 
 ```sh
 brew install xcodegen
-xcodegen generate            # creates QuickBuzz.xcodeproj (not committed)
-open QuickBuzz.xcodeproj
+xcodegen generate            # creates BuzzLight.xcodeproj (not committed)
+open BuzzLight.xcodeproj
 ```
 
 To run on an iPhone, create `Config/Local.xcconfig` (git-ignored) from
 `Config/Local.xcconfig.example` with your `DEVELOPMENT_TEAM`, then re-run `xcodegen generate`.
 
-No second phone handy? In a DEBUG build, launch with `-QBDemo YES` for a simulated network with
+No second phone handy? In a DEBUG build, launch with `-BLDemo YES` for a simulated network with
 pretend players (details in [`docs/testing.md`](docs/testing.md#demo-mode-simulator-debug-builds)).
 
 ## Test
@@ -30,8 +33,8 @@ pretend players (details in [`docs/testing.md`](docs/testing.md#demo-mode-simula
 ```sh
 swift test --package-path Packages/BuzzCore        # game logic + sessions, ~1 s on the Mac
 swift test --package-path Packages/BuzzMultipeer
-QUICKBUZZ_LIVE_MULTIPEER=1 swift test --package-path Packages/BuzzMultipeer   # real Multipeer, opt-in
-xcodebuild test -project QuickBuzz.xcodeproj -scheme QuickBuzz \
+BUZZLIGHT_LIVE_MULTIPEER=1 swift test --package-path Packages/BuzzMultipeer   # real Multipeer, opt-in
+xcodebuild test -project BuzzLight.xcodeproj -scheme BuzzLight \
   -destination 'platform=iOS Simulator,name=iPhone 17'
 ```
 

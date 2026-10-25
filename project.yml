@@ -1,4 +1,4 @@
-name: QuickBuzz
+name: BuzzLight
 options:
   bundleIdPrefix: com.upendrasharma
   deploymentTarget:
@@ -20,7 +20,7 @@ packages:
     path: Packages/BuzzMultipeer
 
 targets:
-  QuickBuzz:
+  BuzzLight:
     type: application
     platform: iOS
     sources:
@@ -34,57 +34,61 @@ targets:
     info:
       path: App/Info.plist
       properties:
-        CFBundleDisplayName: QuickBuzz
-        CFBundleShortVersionString: "0.2.0"
-        CFBundleVersion: "1"
-        UILaunchScreen: {}
+        CFBundleDisplayName: BuzzLight
+        # Driven by MARKETING_VERSION / CURRENT_PROJECT_VERSION below (bump those, not these).
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSApplicationCategoryType: public.app-category.trivia-games
+        UILaunchScreen:
+          UIColorName: LaunchBackground
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
-        UISupportedInterfaceOrientations~ipad:
-          - UIInterfaceOrientationPortrait
-          - UIInterfaceOrientationPortraitUpsideDown
-          - UIInterfaceOrientationLandscapeLeft
-          - UIInterfaceOrientationLandscapeRight
+        # Only Apple's built-in MultipeerConnectivity encryption is used (exempt). Confirm in
+        # App Store Connect → App Information → Encryption.
+        ITSAppUsesNonExemptEncryption: false
         # Required for MultipeerConnectivity discovery on iOS 14+.
-        NSLocalNetworkUsageDescription: QuickBuzz finds nearby players on your Wi-Fi so you can host or join a buzzer game.
+        NSLocalNetworkUsageDescription: BuzzLight uses your local network to find nearby phones, so you can host or join a buzzer game with friends in the same room.
         NSBonjourServices:
-          - _quickbuzz._tcp
-          - _quickbuzz._udp
+          - _buzzlight._tcp
+          - _buzzlight._udp
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.upendrasharma.quickbuzz
-        TARGETED_DEVICE_FAMILY: "1,2"
+        PRODUCT_BUNDLE_IDENTIFIER: com.upendrasharma.buzzlight
+        MARKETING_VERSION: 1.0.0
+        CURRENT_PROJECT_VERSION: 1
+        # iPhone only for v1.0; iPad layout is a Stage 4 item.
+        TARGETED_DEVICE_FAMILY: "1"
         GENERATE_INFOPLIST_FILE: NO
         ENABLE_PREVIEWS: YES
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
 
-  QuickBuzzTests:
+  BuzzLightTests:
     type: bundle.unit-test
     platform: iOS
     sources:
       - path: AppTests
     dependencies:
-      - target: QuickBuzz
+      - target: BuzzLight
 
 schemes:
-  QuickBuzz:
+  BuzzLight:
     build:
       targets:
-        QuickBuzz: all
+        BuzzLight: all
     run:
       config: Debug
       # DEBUG-only demo mode (see docs/testing.md). Tick these in Edit Scheme → Arguments.
       commandLineArguments:
-        "-QBDemo YES": false
-        "-QBDemoAutoPlay YES": false
-        "-QBDemoAutoBuzz fast": false
-        "-QBRoute host": false
-        "-QBRoute join": false
-        "-QBRoute join-first": false
+        "-BLDemo YES": false
+        "-BLDemoAutoPlay YES": false
+        "-BLDemoAutoBuzz fast": false
+        "-BLRoute host": false
+        "-BLRoute join": false
+        "-BLRoute join-first": false
     test:
       config: Debug
       gatherCoverageData: true
       targets:
-        - QuickBuzzTests
+        - BuzzLightTests
         - package: BuzzCore/BuzzCoreTests
         - package: BuzzMultipeer/BuzzMultipeerTests

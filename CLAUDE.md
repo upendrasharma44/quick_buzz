@@ -1,4 +1,4 @@
-# QuickBuzz — agent instructions
+# BuzzLight — agent instructions
 
 iOS buzzer game: nearby iPhones discover each other, one hosts, the others buzz, the host's
 device ranks who buzzed first. Staged delivery; see `docs/roadmap.md` for the plan and status.
@@ -6,23 +6,23 @@ device ranks who buzzed first. Staged delivery; see `docs/roadmap.md` for the pl
 ## Commands
 
 ```sh
-xcodegen generate                                   # regenerate QuickBuzz.xcodeproj (git-ignored)
+xcodegen generate                                   # regenerate BuzzLight.xcodeproj (git-ignored)
 swift test --package-path Packages/BuzzCore         # fast, pure-Swift domain + session tests (run these first)
 swift test --package-path Packages/BuzzMultipeer
-QUICKBUZZ_LIVE_MULTIPEER=1 swift test --package-path Packages/BuzzMultipeer   # real Multipeer on this Mac
-xcodebuild test -project QuickBuzz.xcodeproj -scheme QuickBuzz \
+BUZZLIGHT_LIVE_MULTIPEER=1 swift test --package-path Packages/BuzzMultipeer   # real Multipeer on this Mac
+xcodebuild test -project BuzzLight.xcodeproj -scheme BuzzLight \
   -destination 'platform=iOS Simulator,name=iPhone 17' -quiet   # app + all package tests
 ```
 
 Requires Xcode 26+, Swift 6.2+, `brew install xcodegen`. Device builds need
 `Config/Local.xcconfig` with `DEVELOPMENT_TEAM` (git-ignored; see `Config/Local.xcconfig.example`).
 
-Simulator demo without a second phone: launch with `-QBDemo YES` (loopback network + simulated
-players), optionally `-QBRoute host|join|join-first` and `-profile.name <name>`. See `docs/testing.md`.
+Simulator demo without a second phone: launch with `-BLDemo YES` (loopback network + simulated
+players), optionally `-BLRoute host|join|join-first` and `-profile.name <name>`. See `docs/testing.md`.
 
 ## Layout
 
-- `App/` — SwiftUI app target (`QuickBuzz`): views, `Profile`, `AppServices`, `DemoHub`. No game logic.
+- `App/` — SwiftUI app target (`BuzzLight`): views, `Profile`, `AppServices`, `DemoHub`. No game logic.
 - `Packages/BuzzCore` — models, wire protocol, `GameTransport`, `HostEngine`, `PlayerEngine`,
   `HostSession`/`PlayerSession` (connection lifecycle), `LoopbackTransport`. No UIKit.
 - `Packages/BuzzMultipeer` — `MultipeerTransport` (MultipeerConnectivity → `GameTransport`).
@@ -50,7 +50,7 @@ players), optionally `-QBRoute host|join|join-first` and `-profile.name <name>`.
 ## Known pitfalls
 
 - Multipeer discovery silently fails without `NSLocalNetworkUsageDescription` and `NSBonjourServices`
-  (`_quickbuzz._tcp`, `_quickbuzz._udp`) in Info.plist — they are set in `project.yml`.
+  (`_buzzlight._tcp`, `_buzzlight._udp`) in Info.plist — they are set in `project.yml`.
 - Simulator↔simulator Multipeer is unreliable; test transport changes on two physical devices
   (`docs/testing.md`). Use `LoopbackTransport` for previews and automated tests.
 - MultipeerConnectivity calls delegates on private queues. In `MultipeerTransport`, mutate state and

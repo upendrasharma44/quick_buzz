@@ -84,7 +84,7 @@ public final class PlayerSession {
     public func join(_ host: DiscoveredHost) async {
         guard phase == .browsing else { return }
         guard host.isCompatible else {
-            notice = "\(host.sessionName) uses a different version of QuickBuzz. Update both phones and try again."
+            notice = "\(host.sessionName) uses a different version of BuzzLight. Update both phones and try again."
             return
         }
         notice = nil

@@ -66,7 +66,7 @@ private struct HostRow: View {
                         .foregroundStyle(Color.primary)
                         .lineLimit(1)
                     if !host.isCompatible {
-                        Text("Needs the same QuickBuzz version — update both phones")
+                        Text("Needs the same BuzzLight version — update both phones")
                             .font(.caption)
                             .foregroundStyle(Color.secondary)
                     }
@@ -90,7 +90,7 @@ private struct LocalNetworkHint: View {
 
     var body: some View {
         VStack(spacing: 10) {
-            Text("Still nothing? Check that **Local Network** access is on for QuickBuzz, and that Wi-Fi or Bluetooth is on.")
+            Text("Still nothing? Check that **Local Network** access is on for BuzzLight, and that Wi-Fi or Bluetooth is on.")
                 .font(.footnote)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)

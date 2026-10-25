@@ -137,5 +137,5 @@ public final class HostSession {
 }
 
 enum Log {
-    static let session = Logger(subsystem: "com.upendrasharma.quickbuzz", category: "session")
+    static let session = Logger(subsystem: "com.upendrasharma.buzzlight", category: "session")
 }
