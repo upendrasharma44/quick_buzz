@@ -1,32 +1,63 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#24143A"/>
-      <stop offset="1" stop-color="#120A1F"/>
+      <stop offset="0" stop-color="#1A0F3D"/>
+      <stop offset="1" stop-color="#07040F"/>
     </linearGradient>
     <radialGradient id="dome" cx="0.38" cy="0.3" r="0.8">
       <stop offset="0" stop-color="#FF5A4F"/>
       <stop offset="1" stop-color="#B00D28"/>
     </radialGradient>
+    <radialGradient id="orbFill" cx="0.35" cy="0.35" r="0.7">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="0.45" stop-color="#4FE3FF"/>
+      <stop offset="1" stop-color="#4FE3FF" stop-opacity="0.9"/>
+    </radialGradient>
+    <filter id="blur" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="26"/>
+    </filter>
+    <filter id="blurSmall" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="14"/>
+    </filter>
   </defs>
 
   <!-- Full-bleed square: iOS applies the corner mask. -->
   <rect width="1024" height="1024" fill="url(#bg)"/>
 
-  <!-- Signal arcs: the buzz going out to everyone nearby. -->
-  <g fill="none" stroke="#FF8A3D" stroke-width="38" stroke-linecap="round">
-    <path d="M260.9,415 A290,290 0 0 1 389.4,297.2"/>
-    <path d="M191.6,375 A370,370 0 0 1 355.6,224.7" opacity="0.6"/>
-    <path d="M634.6,297.2 A290,290 0 0 1 763.1,415"/>
-    <path d="M668.4,224.7 A370,370 0 0 1 832.4,375" opacity="0.6"/>
+  <!-- Starfield -->
+  <g fill="#FFFFFF">
+    <circle cx="150" cy="178" r="7"/>
+    <circle cx="862" cy="150" r="6"/>
+    <circle cx="912" cy="330" r="4" opacity="0.7"/>
+    <circle cx="118" cy="440" r="4" opacity="0.7"/>
+    <circle cx="300" cy="118" r="4" opacity="0.6"/>
+    <circle cx="640" cy="120" r="5" opacity="0.8"/>
+    <circle cx="930" cy="560" r="5" opacity="0.6"/>
+    <circle cx="96" cy="700" r="5" opacity="0.5"/>
+    <circle cx="880" cy="860" r="4" opacity="0.5"/>
+    <circle cx="420" cy="200" r="3" opacity="0.6"/>
+    <!-- four-point sparkles -->
+    <path d="M772,208 C776,236 790,250 818,254 C790,258 776,272 772,300 C768,272 754,258 726,254 C754,250 768,236 772,208 Z"/>
+    <path d="M228,296 C230,312 238,320 254,322 C238,324 230,332 228,348 C226,332 218,324 202,322 C218,320 226,312 228,296 Z" opacity="0.85"/>
+    <path d="M846,700 C847,712 853,718 865,719 C853,720 847,726 846,738 C845,726 839,720 827,719 C839,718 845,712 846,700 Z" opacity="0.7"/>
+  </g>
+
+  <!-- Thruster glow under the base -->
+  <ellipse cx="512" cy="760" rx="300" ry="70" fill="#2BB8FF" opacity="0.75" filter="url(#blur)"/>
+
+  <!-- Orbit ring, back half (behind the buzzer) -->
+  <g transform="rotate(-16 512 545)" fill="none" stroke-linecap="round">
+    <path d="M922,545 A410,118 0 0 0 102,545" stroke="#CFF4FF" stroke-width="46" opacity="0.22"/>
+    <path d="M922,545 A410,118 0 0 0 102,545" stroke="#CFF4FF" stroke-width="24" opacity="0.9"/>
   </g>
 
   <!-- Shadow -->
-  <ellipse cx="512" cy="790" rx="300" ry="52" fill="#000" opacity="0.18"/>
+  <ellipse cx="512" cy="790" rx="300" ry="52" fill="#000" opacity="0.22"/>
 
   <!-- Buzzer base -->
   <path d="M232,640 L232,745 A280,70 0 0 0 792,745 L792,640 Z" fill="#0B0614"/>
   <ellipse cx="512" cy="640" rx="280" ry="70" fill="#2E2050"/>
+  <ellipse cx="512" cy="640" rx="280" ry="70" fill="none" stroke="#2BB8FF" stroke-width="6" opacity="0.55"/>
 
   <!-- Dome -->
   <path d="M302,630 A210,205 0 0 1 722,630 A210,52 0 0 1 302,630 Z" fill="url(#dome)"/>
@@ -35,4 +66,12 @@
   <!-- Lightning bolt -->
   <path d="M535,438 L452,566 L506,566 L474,668 L580,516 L522,516 L566,438 Z"
         fill="#FFD23F" stroke-linejoin="round"/>
+
+  <!-- Orbit ring, front half (in front of the buzzer) with the satellite orb -->
+  <g transform="rotate(-16 512 545)" fill="none" stroke-linecap="round">
+    <path d="M922,545 A410,118 0 0 1 102,545" stroke="#CFF4FF" stroke-width="46" opacity="0.22"/>
+    <path d="M922,545 A410,118 0 0 1 102,545" stroke="#CFF4FF" stroke-width="24" opacity="0.95"/>
+    <circle cx="717" cy="647" r="44" fill="#4FE3FF" opacity="0.8" filter="url(#blurSmall)"/>
+    <circle cx="717" cy="647" r="30" fill="url(#orbFill)"/>
+  </g>
 </svg>
