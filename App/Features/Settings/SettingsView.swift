@@ -8,7 +8,7 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var draft = ""
     @AppStorage(SoundPlayer.enabledKey) private var soundEnabled = true
-    @AppStorage(Diagnostics.enabledKey) private var debugLogEnabled = false
+    @AppStorage(Diagnostics.enabledKey) private var debugLogEnabled = Diagnostics.defaultEnabled
     @State private var debugLogSize = 0
     #if DEBUG
     @AppStorage(TransportKind.key) private var transport = TransportKind.network.rawValue

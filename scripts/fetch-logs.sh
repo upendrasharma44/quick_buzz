@@ -37,8 +37,12 @@ fi
 
 fetched=0
 for device in "${devices[@]}"; do
-  name="$(xcrun devicectl device info details --device "$device" --json-output /dev/stdout 2>/dev/null \
-          | python3 -c 'import json,sys; print(json.load(sys.stdin)["result"]["deviceProperties"]["name"])' 2>/dev/null || echo "$device")"
+  # devicectl also prints text on stdout, so its JSON must go to a file.
+  details="$(mktemp)"
+  name="$(xcrun devicectl device info details --device "$device" --json-output "$details" >/dev/null 2>&1 \
+          && python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["result"]["deviceProperties"]["name"])' "$details" 2>/dev/null \
+          || echo "$device")"
+  rm -f "$details"
   safe="$(echo "$name" | tr -c 'A-Za-z0-9-' '_' | sed 's/_*$//')"
   mkdir -p "$OUT/$safe"
   got=0
@@ -53,7 +57,7 @@ for device in "${devices[@]}"; do
     echo "✓ $name"
     fetched=$((fetched + 1))
   else
-    echo "✗ $name: no log (app not installed from Xcode, logging off, or phone unreachable)"
+    echo "✗ $name: no log file (logging was off, nothing recorded yet, app not installed from Xcode, or phone unreachable)"
     rmdir "$OUT/$safe" 2>/dev/null || true
   fi
 done

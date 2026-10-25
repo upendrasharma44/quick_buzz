@@ -7,7 +7,7 @@ import UniformTypeIdentifiers
 /// App side of the debug log (`DebugLog` in BuzzCore): where the file lives, the on/off switch,
 /// the header that identifies the phone, and the shareable export.
 ///
-/// Turn on with Settings → Diagnostics → Record debug log, or launch with `-BLDebugLog YES`.
+/// On by default in DEBUG builds; otherwise Settings → Diagnostics → Record debug log, or `-BLDebugLog YES`.
 /// Fetch with `scripts/fetch-logs.sh` (phone connected to the Mac) or Settings → Share debug log.
 enum Diagnostics {
     /// UserDefaults key (also the launch argument `-BLDebugLog YES`).
@@ -18,8 +18,17 @@ enum Diagnostics {
         URL.applicationSupportDirectory.appendingPathComponent("DebugLog", isDirectory: true)
     }
 
+    /// On by default in DEBUG builds (installed from Xcode, i.e. test phones), off in release.
+    static var defaultEnabled: Bool {
+        #if DEBUG
+        true
+        #else
+        false
+        #endif
+    }
+
     static func isEnabled(_ defaults: UserDefaults = .standard) -> Bool {
-        defaults.bool(forKey: enabledKey)
+        defaults.object(forKey: enabledKey) as? Bool ?? defaultEnabled
     }
 
     /// Call once at launch.

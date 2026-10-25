@@ -145,7 +145,8 @@ What is logged:
 - **App:** a header per launch (build, phone model, iOS, player, transport), scene phase, which
   transport each game uses.
 
-**Record:** on *every* phone, Settings → Diagnostics → **Record debug log** (or launch from Xcode with
+**Record:** builds installed from Xcode (DEBUG) record by default; check Settings → Diagnostics →
+**Record debug log** is on for *every* phone (release builds: turn it on there, or launch with
 `-BLDebugLog YES`). Then reproduce the problem and note roughly when it happened.
 
 **Fetch:**
