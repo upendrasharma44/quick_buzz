@@ -21,6 +21,9 @@ Requires Xcode 26+, Swift 6.2+, `brew install xcodegen`.
 - `Packages/BuzzCore` — models, wire protocol, `GameTransport`, `HostEngine`, `PlayerEngine`, `LoopbackTransport`. No UIKit.
 - `Packages/BuzzMultipeer` — `MultipeerTransport` (MultipeerConnectivity → `GameTransport`).
 - `docs/` — roadmap, architecture, protocol, testing, ADRs. **Docs are part of every change.**
+- `design/icon/` — app icon source. Edit colours/shapes in `make-icon.sh` and re-run it
+  (needs `brew install librsvg`); it writes the light/dark/tinted PNGs into `AppIcon.appiconset`.
+  Never hand-edit the PNGs.
 
 ## Mandatory rules
 
