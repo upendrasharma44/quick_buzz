@@ -12,11 +12,31 @@ Every frame is one JSON object produced by `GameMessageCodec`:
 ```
 
 - `version` — `Envelope.currentVersion`, currently **1**. A receiver that gets a different version
-  throws `ProtocolError.unsupportedVersion` and should surface "update the app" to the user.
+  throws `ProtocolError.unsupportedVersion`; `MultipeerTransport` turns that into
+  `.failed(.incompatibleVersion(v, from: peer))`. A player's session ends with "Different app
+  versions" only if that peer is its host; the host shows an inline notice.
 - `message` — Swift `Codable` synthesized enum encoding: the case name is the single key; cases
   without payload encode as `{ "kick": {} }`.
 - Keys are sorted for stable output. Messages are small (< 2 KB); Multipeer sends them as
   `.reliable` data frames.
+
+## Discovery (MultipeerConnectivity)
+
+Before any frame is exchanged, players find hosts through Bonjour via MultipeerConnectivity:
+
+| Item | Value |
+|---|---|
+| Service type | `quickbuzz` (Info.plist `NSBonjourServices`: `_quickbuzz._tcp`, `_quickbuzz._udp`) |
+| Who advertises | Host only. Players browse and send the invitation; the host auto-accepts up to 7 players. |
+| Discovery info | `session` → session name shown in the Join list (≤ 120 bytes, default "<name>'s game"); `v` → `Envelope.currentVersion` |
+| Invitation context | UTF-8 `v=<Envelope.currentVersion>`. The host declines invitations whose context differs, so a mismatched phone never enters the session. |
+| Topology | Logically a star (players talk to the host only), but MultipeerConnectivity links every session member to every other; players must address the host explicitly. |
+| Peer display name | The user's display name (≤ 63 UTF-8 bytes). Not an identity: `PlayerID` in `hello` is. |
+| Encryption | `MCEncryptionPreference.required` |
+| Delivery | Every frame is sent `.reliable` |
+
+Players read `v` to grey out incompatible hosts in the Join list before trying to connect; the
+invitation context check is the host's backstop.
 
 ## Messages
 

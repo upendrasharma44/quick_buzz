@@ -13,7 +13,7 @@ tests and docs → PR referencing the issue → merge → update status → clos
 |---|---|---|---|---|
 | 0 | Scaffold & plan tracking | [#1](https://github.com/upendrasharma44/quick_buzz/issues/1) | ✅ Done (2026-10-25) | — |
 | 1 | Domain core (engines, protocol, loopback) | [#2](https://github.com/upendrasharma44/quick_buzz/issues/2) | ✅ Done (2026-10-25) | — |
-| 2 | Discovery & lobby over Multipeer | [#3](https://github.com/upendrasharma44/quick_buzz/issues/3) | ⬜ Not started | — |
+| 2 | Discovery & lobby over Multipeer | [#3](https://github.com/upendrasharma44/quick_buzz/issues/3) | 🔧 Built, awaiting 2-phone test | v0.2 (dev) |
 | 3 | Buzz rounds | [#4](https://github.com/upendrasharma44/quick_buzz/issues/4) | ⬜ Not started | **v1.0 free** |
 | 4 | Robustness & fairness polish | [#5](https://github.com/upendrasharma44/quick_buzz/issues/5) | ⬜ Not started | v1.x |
 | 5 | Plus tier (StoreKit 2, $0.99/yr) | [#6](https://github.com/upendrasharma44/quick_buzz/issues/6) | ⬜ Not started | v1.2 |
@@ -62,10 +62,20 @@ XcodeGen project (iOS 18, Swift 6 strict concurrency), local packages `BuzzCore`
 `HostEngine` (arbitration state machine) and `PlayerEngine`, 34 Swift Testing tests including a
 host + 2 players loopback round. No UI, no networking.
 
-### Stage 2 — Discovery & lobby over Multipeer
-`MultipeerTransport` (advertiser, browser, session, auto-accept), app session layer pumping
-transport events into engines, name entry + persisted `PlayerID`, Home / Host lobby / Join browser /
-Player waiting screens, background and disconnect handling, two-device manual test script.
+### Stage 2 — Discovery & lobby over Multipeer 🔧
+Built on 2026-10-25; the stage closes once the two-phone script in `docs/testing.md` passes.
+- `MultipeerTransport`: advertiser/browser/session, auto-accept up to 7 players, peer registry,
+  arrival timestamps, version-mismatch detection. Verified against real MultipeerConnectivity by
+  the opt-in live tests.
+- `HostSession` / `PlayerSession` in `BuzzCore`: join, 20 s connect timeout, automatic reconnect
+  (30 s of foreground time) after a drop, kick, leave, host end, version checks (ADR 0004).
+- Independent review against real MultipeerConnectivity found 4 defects (dropped invitations after a
+  browser restart, mesh-wide version errors, reconnect clock running while suspended, player cap
+  race); all fixed with regression tests.
+- App: name onboarding + persisted `PlayerID`, Home, Host lobby (live roster, kick, end), Join
+  browser (nearby games, Local Network hint), player waiting screen, end screens, Settings
+  (rename), keep-awake during games, DEBUG demo mode with simulated players.
+- Remaining: run the two-phone script on hardware and record the results in #3.
 
 ### Stage 3 — Buzz rounds → v1.0 free release
 Host console (Arm / Reset / Next / End, live ranking, points), player buzzer with haptics and
