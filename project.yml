@@ -18,6 +18,8 @@ packages:
     path: Packages/BuzzCore
   BuzzMultipeer:
     path: Packages/BuzzMultipeer
+  BuzzNetwork:
+    path: Packages/BuzzNetwork
 
 targets:
   BuzzLight:
@@ -31,6 +33,7 @@ targets:
     dependencies:
       - package: BuzzCore
       - package: BuzzMultipeer
+      - package: BuzzNetwork
     info:
       path: App/Info.plist
       properties:
@@ -48,9 +51,12 @@ targets:
         ITSAppUsesNonExemptEncryption: false
         # Required for MultipeerConnectivity discovery on iOS 14+.
         NSLocalNetworkUsageDescription: BuzzLight uses your local network to find nearby phones, so you can host or join a buzzer game with friends in the same room.
+        # _buzzlight._tcp: Network.framework transport. _buzzlight-mc.*: Multipeer, DEBUG A/B only,
+        # removed with BuzzMultipeer once the switch is verified on devices (ADR 0007).
         NSBonjourServices:
           - _buzzlight._tcp
-          - _buzzlight._udp
+          - _buzzlight-mc._tcp
+          - _buzzlight-mc._udp
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.upendrasharma.buzzlight
@@ -80,6 +86,7 @@ schemes:
       # DEBUG-only demo mode (see docs/testing.md). Tick these in Edit Scheme → Arguments.
       commandLineArguments:
         "-BLDemo YES": false
+        "-BLTransport multipeer": false
         "-BLDemoAutoPlay YES": false
         "-BLDemoAutoBuzz fast": false
         "-BLRoute host": false
@@ -92,3 +99,4 @@ schemes:
         - BuzzLightTests
         - package: BuzzCore/BuzzCoreTests
         - package: BuzzMultipeer/BuzzMultipeerTests
+        - package: BuzzNetwork/BuzzNetworkTests

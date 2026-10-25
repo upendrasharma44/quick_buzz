@@ -7,6 +7,9 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var draft = ""
     @AppStorage(SoundPlayer.enabledKey) private var soundEnabled = true
+    #if DEBUG
+    @AppStorage(TransportKind.key) private var transport = TransportKind.network.rawValue
+    #endif
 
     var body: some View {
         NavigationStack {
@@ -30,6 +33,17 @@ struct SettingsView: View {
                 Section("About") {
                     LabeledContent("Version", value: Bundle.main.appVersion)
                 }
+                #if DEBUG
+                Section {
+                    Picker("Transport", selection: $transport) {
+                        ForEach(TransportKind.allCases) { Text($0.label).tag($0.rawValue) }
+                    }
+                } header: {
+                    Text("Developer")
+                } footer: {
+                    Text("DEBUG builds only. Applies to the next game. Every phone in a game must use the same transport.")
+                }
+                #endif
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
