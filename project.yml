@@ -1,0 +1,78 @@
+name: QuickBuzz
+options:
+  bundleIdPrefix: com.upendrasharma
+  deploymentTarget:
+    iOS: "18.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    CODE_SIGN_STYLE: Automatic
+    # Set DEVELOPMENT_TEAM here (or in Xcode) before running on a physical device.
+
+packages:
+  BuzzCore:
+    path: Packages/BuzzCore
+  BuzzMultipeer:
+    path: Packages/BuzzMultipeer
+
+targets:
+  QuickBuzz:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+    dependencies:
+      - package: BuzzCore
+      - package: BuzzMultipeer
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: QuickBuzz
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        # Required for MultipeerConnectivity discovery on iOS 14+.
+        NSLocalNetworkUsageDescription: QuickBuzz finds nearby players on your Wi-Fi so you can host or join a buzzer game.
+        NSBonjourServices:
+          - _quickbuzz._tcp
+          - _quickbuzz._udp
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.upendrasharma.quickbuzz
+        TARGETED_DEVICE_FAMILY: "1,2"
+        GENERATE_INFOPLIST_FILE: NO
+        ENABLE_PREVIEWS: YES
+
+  QuickBuzzTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: AppTests
+    dependencies:
+      - target: QuickBuzz
+
+schemes:
+  QuickBuzz:
+    build:
+      targets:
+        QuickBuzz: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      gatherCoverageData: true
+      targets:
+        - QuickBuzzTests
+        - package: BuzzCore/BuzzCoreTests
+        - package: BuzzMultipeer/BuzzMultipeerTests
