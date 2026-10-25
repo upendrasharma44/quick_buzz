@@ -21,8 +21,8 @@ import Foundation
 public final class MultipeerTransport: NSObject, GameTransport, @unchecked Sendable {
     /// Must match `NSBonjourServices` in the app's Info.plist (`_buzzlight._tcp` / `_buzzlight._udp`).
     public static let serviceType = "buzzlight"
-    /// An `MCSession` holds at most 8 peers including the host.
-    public static let maxPlayers = kMCSessionMaximumNumberOfPeers - 1
+    /// The game limit; it also fits an `MCSession` (8 peers including the host).
+    public static let maxPlayers = min(SessionLimits.maxPlayers, kMCSessionMaximumNumberOfPeers - 1)
     /// How long a player's invitation waits for the host before MultipeerConnectivity gives up.
     public static let invitationTimeout: TimeInterval = 15
     /// When a pending invitation is declared failed if MultipeerConnectivity never reports back.
