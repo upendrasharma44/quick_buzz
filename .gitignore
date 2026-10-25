@@ -77,3 +77,6 @@ App/Info.plist
 
 # Machine-specific build settings (Team ID)
 Config/Local.xcconfig
+
+# Debug logs fetched from devices (scripts/fetch-logs.sh)
+logs/

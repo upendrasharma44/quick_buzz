@@ -31,7 +31,11 @@ final class AppServices {
         }
         #endif
         // Read per game, so a DEBUG Settings change applies to the next game without relaunching.
-        return AppServices(makeTransport: { TransportKind.current(defaults).make(displayName: $0) })
+        return AppServices(makeTransport: { name in
+            let kind = TransportKind.current(defaults)
+            debugLog(.app, "new game transport: \(kind.rawValue)")
+            return kind.make(displayName: name)
+        })
     }
 }
 
@@ -74,7 +78,7 @@ enum TransportKind: String, CaseIterable, Identifiable {
 enum LaunchOption {
     /// Use an in-process loopback network with simulated players instead of a real transport.
     static let demo = "BLDemo"
-    /// Open straight into a flow: `host`, `join`, or `join-first` (join the first game found).
+    /// Open straight into a flow: `host`, `join`, `join-first` (join the first game found), or `settings`.
     static let route = "BLRoute"
     /// With `BLDemo`: your own hosted game also runs rounds by itself (arm, award winner, reset).
     static let demoAutoPlay = "BLDemoAutoPlay"

@@ -76,10 +76,15 @@ public final class NetworkTransport: GameTransport, @unchecked Sendable {
         }
         guard let created else { return }
         created.stateUpdateHandler = { [weak self, weak created] state in
+            debugLog(.transport, "listener state \(state)\(state == .ready ? " port \(created?.port.map(String.init(describing:)) ?? "?")" : "")")
             guard let self, let created, case .failed(let error) = state else { return }
             self.yieldIfCurrent(listener: created, .failed(.underlying("Couldn't start hosting: \(error.localizedDescription)")))
         }
+        created.serviceRegistrationUpdateHandler = { change in
+            debugLog(.transport, "listener bonjour \(change)")
+        }
         created.newConnectionHandler = { [weak self] connection in
+            debugLog(.transport, "listener incoming connection from \(connection.endpoint)")
             self?.accept(connection)
         }
         created.start(queue: queue)
@@ -98,6 +103,7 @@ public final class NetworkTransport: GameTransport, @unchecked Sendable {
         guard let (peer, token) = admitted else {
             // Full or stopped. Start then close, so the player hears "no" at once instead of
             // waiting out its connection expiry on a socket nobody will ever answer.
+            debugLog(.transport, "incoming connection REFUSED (full or stopped) from \(connection.endpoint)")
             connection.start(queue: queue)
             connection.cancel()
             return
@@ -119,10 +125,12 @@ public final class NetworkTransport: GameTransport, @unchecked Sendable {
         }
         guard let created else { return }
         created.browseResultsChangedHandler = { [weak self, weak created] _, changes in
+            for change in changes { debugLog(.transport, "browse \(Self.describe(change))") }
             guard let self, let created else { return }
             self.handle(changes, from: created)
         }
         created.stateUpdateHandler = { [weak self, weak created] state in
+            debugLog(.transport, "browser state \(state)")
             guard let self, let created, case .failed(let error) = state else { return }
             self.yieldIfCurrent(browser: created, .failed(.underlying("Couldn't look for games: \(error.localizedDescription)")))
         }
@@ -210,7 +218,17 @@ public final class NetworkTransport: GameTransport, @unchecked Sendable {
     // MARK: - Connections
 
     private func start(_ connection: NWConnection, as peer: PeerID) {
+        connection.viabilityUpdateHandler = { [weak connection] viable in
+            debugLog(.transport, "conn \(peer) viable=\(viable)\(connection.map { " path " + Self.describe($0.currentPath) } ?? "")")
+        }
+        connection.betterPathUpdateHandler = { better in
+            debugLog(.transport, "conn \(peer) betterPathAvailable=\(better)")
+        }
+        connection.pathUpdateHandler = { path in
+            debugLog(.transport, "conn \(peer) path \(Self.describe(path))")
+        }
         connection.stateUpdateHandler = { [weak self, weak connection] state in
+            debugLog(.transport, "conn \(peer) state \(state)\(state == .ready ? " via " + Self.describe(connection?.currentPath) : "")")
             guard let self, let connection else { return }
             self.handle(state, of: connection, as: peer)
         }
@@ -255,6 +273,7 @@ public final class NetworkTransport: GameTransport, @unchecked Sendable {
     private func receive(on connection: NWConnection, from peer: PeerID) {
         connection.receiveMessage { [weak self, weak connection] content, context, _, error in
             let receivedAt = ContinuousClock.now
+            if let error { debugLog(.transport, "conn \(peer) receive error \(error)") }
             guard let self, let connection else { return }
             if let content, !content.isEmpty {
                 self.deliver(content, from: peer, via: connection, receivedAt: receivedAt)
@@ -266,6 +285,7 @@ public final class NetworkTransport: GameTransport, @unchecked Sendable {
             // gives up seconds later; cancelling reports `.peerDisconnected` right away.
             let webSocket = context?.protocolMetadata(definition: NWProtocolWebSocket.definition) as? NWProtocolWebSocket.Metadata
             if webSocket?.opcode == .close || context?.isFinal == true {
+                debugLog(.transport, "conn \(peer) closed by other side (\(webSocket?.opcode == .close ? "close frame" : "end of stream")); cancelling")
                 connection.cancel()
                 return
             }
@@ -281,7 +301,9 @@ public final class NetworkTransport: GameTransport, @unchecked Sendable {
         } catch ProtocolError.unsupportedVersion(let version) {
             event = .failed(.incompatibleVersion(version, from: peer))
             reject = true
+            debugLog(.transport, "conn \(peer) frame from protocol v\(version); turning away")
         } catch {
+            debugLog(.transport, "conn \(peer) unreadable frame (\(data.count) bytes): \(error)")
             event = .failed(.underlying("Unreadable message from \(peer)."))
         }
         let current = lock.withLock { () -> Bool in
@@ -297,8 +319,18 @@ public final class NetworkTransport: GameTransport, @unchecked Sendable {
 
     private func transmit(_ data: Data, to targets: [NWConnection]) {
         for connection in targets {
+            let started = ContinuousClock.now
             connection.send(content: data, contentContext: NetworkParameters.frameContext,
-                            isComplete: true, completion: .contentProcessed { _ in })
+                            isComplete: true, completion: .contentProcessed { error in
+                if let error {
+                    debugLog(.transport, "send FAILED \(data.count) bytes to \(connection.endpoint): \(error)")
+                } else {
+                    let elapsed = ContinuousClock.now - started
+                    if elapsed > .milliseconds(200) {  // a slow link shows up here before it drops
+                        debugLog(.transport, "send slow: \(data.count) bytes to \(connection.endpoint) took \(elapsed)")
+                    }
+                }
+            })
         }
     }
 
@@ -313,8 +345,10 @@ public final class NetworkTransport: GameTransport, @unchecked Sendable {
                 let connection = self.connections.removeValue(forKey: peer)
                 switch self.registry.key(for: peer) {
                 case .endpoint?:
+                    debugLog(.transport, "conn \(peer) not ready after \(Self.connectionExpiry); giving up")
                     self.continuation.yield(.failed(.connectionFailed(peer)))  // the player's join failed
                 case .incoming?:
+                    debugLog(.transport, "incoming \(peer) handshake never completed; freeing slot")
                     self.registry.remove(peer)  // a half-open incoming handshake: just free the slot
                 case nil:
                     break
@@ -355,6 +389,25 @@ public final class NetworkTransport: GameTransport, @unchecked Sendable {
             sessionName: DiscoveryInfo.sessionName(from: txt, fallback: name),
             isCompatible: DiscoveryInfo.isCompatible(txt)
         )
+    }
+
+    static func describe(_ path: NWPath?) -> String {
+        guard let path else { return "(no path)" }
+        let interfaces = path.availableInterfaces.map { "\($0.name):\($0.type)" }.joined(separator: ",")
+        return "\(path.status) [\(interfaces)]\(path.isExpensive ? " expensive" : "")\(path.isConstrained ? " constrained" : "")"
+    }
+
+    static func describe(_ change: NWBrowser.Result.Change) -> String {
+        func one(_ r: NWBrowser.Result) -> String {
+            "\(r.endpoint) interfaces [\(r.interfaces.map { "\($0.name):\($0.type)" }.joined(separator: ","))]"
+        }
+        switch change {
+        case .added(let r): return "added \(one(r))"
+        case .removed(let r): return "removed \(one(r))"
+        case .changed(_, let r, let flags): return "changed \(one(r)) flags \(flags)"
+        case .identical: return "identical"
+        @unknown default: return "unknown change"
+        }
     }
 
     private static func serviceName(of result: NWBrowser.Result) -> String {

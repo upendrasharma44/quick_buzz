@@ -21,6 +21,13 @@ All of this travels directly between nearby devices over Wi-Fi (your local netwo
 phone-to-phone Wi-Fi link) using Apple's Network framework, encrypted with TLS. None of it is sent
 to the developer or to any server.
 
+## Diagnostic log
+
+Settings → Diagnostics → Record debug log is off unless you turn it on. When on, the app writes a log
+of what the game does (connections, messages, timings, display names in the game) to a file **on your
+phone**. It is never sent anywhere automatically; it only leaves the phone if you choose Share debug
+log and send it to someone. You can clear it at any time in the same place.
+
 ## Local Network permission
 
 iOS asks for Local Network access so BuzzLight can find nearby phones and connect to them. It is

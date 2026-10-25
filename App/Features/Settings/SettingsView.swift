@@ -1,3 +1,4 @@
+import BuzzCore
 import SwiftUI
 
 /// Display name (applies to the next game, saved with Save) and sound (applies immediately).
@@ -7,6 +8,8 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var draft = ""
     @AppStorage(SoundPlayer.enabledKey) private var soundEnabled = true
+    @AppStorage(Diagnostics.enabledKey) private var debugLogEnabled = false
+    @State private var debugLogSize = 0
     #if DEBUG
     @AppStorage(TransportKind.key) private var transport = TransportKind.network.rawValue
     #endif
@@ -32,6 +35,26 @@ struct SettingsView: View {
                 }
                 Section("About") {
                     LabeledContent("Version", value: Bundle.main.appVersion)
+                }
+                Section {
+                    Toggle("Record debug log", isOn: $debugLogEnabled)
+                    if debugLogSize > 0 || debugLogEnabled {
+                        LabeledContent("Log size", value: ByteCountFormatter.string(fromByteCount: Int64(debugLogSize), countStyle: .file))
+                        ShareLink(item: DebugLogFile(label: "\(profile.name)-\(Diagnostics.deviceModel)"),
+                                  preview: SharePreview("BuzzLight debug log")) {
+                            Label("Share debug log", systemImage: "square.and.arrow.up")
+                        }
+                        .disabled(debugLogSize == 0)
+                        Button("Clear debug log", role: .destructive) {
+                            DebugLog.shared.clear()
+                            debugLogSize = DebugLog.shared.sizeInBytes
+                        }
+                        .disabled(debugLogSize == 0)
+                    }
+                } header: {
+                    Text("Diagnostics")
+                } footer: {
+                    Text("Records what the game does on this phone (connections, messages, timings) to a file that stays on the phone until you share it. Turn it on before reproducing a problem.")
                 }
                 #if DEBUG
                 Section {
@@ -59,7 +82,14 @@ struct SettingsView: View {
                     .disabled(Profile.normalized(draft) == nil)
                 }
             }
-            .onAppear { draft = profile.name }
+            .onAppear {
+                draft = profile.name
+                debugLogSize = DebugLog.shared.sizeInBytes
+            }
+            .onChange(of: debugLogEnabled) { _, on in
+                Diagnostics.setEnabled(on, profile: profile)
+                debugLogSize = DebugLog.shared.sizeInBytes
+            }
         }
     }
 }

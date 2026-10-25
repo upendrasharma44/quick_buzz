@@ -44,32 +44,38 @@ public final class HostSession {
 
     public func start() async {
         guard phase == .idle else { return }
+        debugLog(.session, "host start \"\(sessionName)\" as \(engine.host.name) (\(engine.host.id.short)), transport \(type(of: transport)) \(transport.localPeer)")
         phase = .hosting
         listen()
         await advertise()
     }
 
     public func kick(_ playerID: PlayerID) async {
+        debugLog(.session, "host kick \(engine.name(of: playerID))")
         await deliver(engine.kick(playerID))
     }
 
     /// Open the current round for buzzing.
     public func arm() async {
+        debugLog(.session, "host arm \(engine.round.id) (\(engine.players.count - 1) players)")
         await deliver(engine.arm())
     }
 
     /// Clear the round (ranking and lockouts) and wait idle for the next question.
     public func reset() async {
+        debugLog(.session, "host reset \(engine.round.id)")
         await deliver(engine.reset())
     }
 
     /// Clear the round and open the next one straight away.
     public func nextRound() async {
+        debugLog(.session, "host next round after \(engine.round.id)")
         await deliver(engine.nextRound())
     }
 
     /// Add (or, with a negative value, take back) points.
     public func award(points: Int, to playerID: PlayerID) async {
+        debugLog(.session, "host award \(points) to \(engine.name(of: playerID))")
         await deliver(engine.award(points: points, to: playerID))
     }
 
@@ -77,6 +83,7 @@ public final class HostSession {
     public func end() async {
         guard phase != .ended else { return }
         let wasHosting = phase == .hosting
+        debugLog(.session, "host end (was \(phase))")
         phase = .ended
         if wasHosting {
             await deliver(engine.end())
@@ -93,6 +100,7 @@ public final class HostSession {
             try await transport.startHosting(sessionName: sessionName)
             notice = nil
         } catch {
+            debugLog(.session, "host advertise failed: \(error)")
             notice = error.localizedDescription
         }
     }
@@ -108,12 +116,16 @@ public final class HostSession {
     }
 
     private func handle(_ event: TransportEvent) async {
+        debugLog(.session, "host ← \(event.logDescription)")
         switch event {
         case .peerConnected(let peer):
             await deliver(engine.peerConnected(peer))
         case .peerDisconnected(let peer):
             await deliver(engine.peerDisconnected(peer))
         case .message(let message, let peer, let receivedAt):
+            if case .buzz(let round) = message {
+                debugLog(.session, "host buzz \(round) from \(engine.player(for: peer)?.name ?? "unknown peer \(peer)"), current \(engine.round.id) \(engine.round.phase.rawValue)")
+            }
             await deliver(engine.receive(message, from: peer, at: receivedAt))
         case .failed(let error):
             Log.session.error("host transport: \(error.localizedDescription, privacy: .public)")
@@ -125,11 +137,13 @@ public final class HostSession {
 
     private func deliver(_ outbounds: [Outbound]) async {
         for outbound in outbounds {
+            debugLog(.session, "host → \(outbound.logDescription)")
             do {
                 try await transport.deliver(outbound)
             } catch {
                 // A peer can vanish between the engine's decision and the send; the disconnect
                 // event that follows reconciles the roster, so this is not surfaced to the user.
+                debugLog(.session, "host send FAILED \(outbound.message.summary): \(error)")
                 Log.session.debug("host send failed: \(error.localizedDescription, privacy: .public)")
             }
         }

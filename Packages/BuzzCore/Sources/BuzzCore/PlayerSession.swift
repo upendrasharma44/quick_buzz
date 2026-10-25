@@ -28,11 +28,15 @@ public final class PlayerSession {
     }
 
     public let engine: PlayerEngine
-    public private(set) var phase: Phase = .idle
+    public private(set) var phase: Phase = .idle {
+        didSet { if phase != oldValue { debugLog(.session, "player phase \(oldValue) → \(phase)") } }
+    }
     /// Hosts currently visible, sorted by session name.
     public private(set) var hosts: [DiscoveredHost] = []
     /// Non-fatal problem to show inline (e.g. a failed join). Cleared by the next join attempt.
-    public private(set) var notice: String?
+    public private(set) var notice: String? {
+        didSet { if let notice, notice != oldValue { debugLog(.session, "player notice: \(notice)") } }
+    }
 
     @ObservationIgnored private let transport: any GameTransport
     @ObservationIgnored private let connectTimeout: Duration
@@ -76,6 +80,7 @@ public final class PlayerSession {
 
     public func start() async {
         guard phase == .idle else { return }
+        debugLog(.session, "player start as \(engine.me.name) (\(engine.me.id.short)), transport \(type(of: transport)) \(transport.localPeer)")
         phase = .browsing
         listen()
         await browse()
@@ -83,6 +88,7 @@ public final class PlayerSession {
 
     public func join(_ host: DiscoveredHost) async {
         guard phase == .browsing else { return }
+        debugLog(.session, "player join \(host.id) \"\(host.sessionName)\"")
         guard host.isCompatible else {
             notice = "\(host.sessionName) uses a different version of BuzzLight. Update both phones and try again."
             return
@@ -98,6 +104,7 @@ public final class PlayerSession {
     }
 
     public func leave() async {
+        debugLog(.session, "player leave")
         await finish(.left)
     }
 
@@ -105,8 +112,13 @@ public final class PlayerSession {
     /// main-actor turn as the touch-down that triggered it, and only the send is deferred. Keep it
     /// that way (ADR 0005 will stamp the press here).
     public func buzz() {
-        guard case .joined = phase else { return }
+        guard case .joined = phase else {
+            debugLog(.session, "player buzz IGNORED: phase \(phase)")
+            return
+        }
+        let before = engine.status
         let outbounds = engine.buzz()
+        debugLog(.session, "player buzz pressed: status \(before) → \(engine.status), round \(engine.round.map { "\($0.id) \($0.phase.rawValue)" } ?? "none"), \(outbounds.isEmpty ? "nothing sent" : "sending")")
         guard !outbounds.isEmpty else { return }
         Task { await deliver(outbounds) }
     }
@@ -114,6 +126,7 @@ public final class PlayerSession {
     /// Call when the scene moves to the background. The system drops the connection there, and the
     /// reconnect deadline must not run down while the app is suspended.
     public func sceneDidEnterBackground() {
+        debugLog(.session, "player scene → background (phase \(phase))")
         isBackgrounded = true
         if case .reconnecting = phase { cancelTimeout() }
     }
@@ -121,6 +134,7 @@ public final class PlayerSession {
     /// Call when the scene is active again: give the reconnect a fresh deadline and retry now.
     /// (Browsing itself resumes on its own; the transport handles that.)
     public func sceneDidBecomeActive() async {
+        debugLog(.session, "player scene → active (phase \(phase))")
         isBackgrounded = false
         guard case .reconnecting(let target) = phase else { return }
         armReconnectTimeout()
@@ -141,6 +155,7 @@ public final class PlayerSession {
     }
 
     private func handle(_ event: TransportEvent) async {
+        debugLog(.session, "player ← \(event.logDescription)")
         switch event {
         case .hostFound(let found):
             hosts.removeAll { $0.id == found.id }
@@ -220,6 +235,7 @@ public final class PlayerSession {
     }
 
     private func connectTimedOut(_ target: DiscoveredHost) {
+        debugLog(.session, "player connect timeout for \(target.id)")
         joinFailed(target, TransportError.connectionFailed(target.id))
     }
 
@@ -227,6 +243,7 @@ public final class PlayerSession {
         Task { [weak self, retryDelay] in
             try? await Task.sleep(for: retryDelay)
             guard let self, self.phase == .reconnecting(target) else { return }
+            debugLog(.session, "player reconnect retry → \(target.id)")
             try? await self.transport.connect(to: target.id)
         }
     }
@@ -241,7 +258,11 @@ public final class PlayerSession {
     }
 
     private func armReconnectTimeout() {
-        armTimeout(reconnectTimeout) { await $0.finish(.connectionLost) }
+        debugLog(.session, "player reconnect deadline armed (\(reconnectTimeout))")
+        armTimeout(reconnectTimeout) {
+            debugLog(.session, "player reconnect deadline EXPIRED")
+            await $0.finish(.connectionLost)
+        }
     }
 
     private func armTimeout(_ duration: Duration, _ action: @escaping @MainActor (PlayerSession) async -> Void) {
@@ -261,13 +282,32 @@ public final class PlayerSession {
     /// Players only ever talk to the host. Recipients are ignored on purpose: MultipeerConnectivity
     /// links every member of a session, so a "broadcast" would also reach the other players.
     private func deliver(_ outbounds: [Outbound]) async {
-        guard let target = host else { return }
+        guard let target = host else {
+            debugLog(.session, "player send DROPPED (no host, phase \(phase)): \(outbounds.map(\.message.summary))")
+            return
+        }
         for outbound in outbounds {
+            debugLog(.session, "player → \(outbound.message.summary) → \(target.id)")
             do {
                 try await transport.send(outbound.message, to: [target.id])
             } catch {
+                debugLog(.session, "player send FAILED \(outbound.message.summary): \(error)")
                 Log.session.debug("player send failed: \(error.localizedDescription, privacy: .public)")
             }
+        }
+    }
+}
+
+extension PlayerSession.Phase: CustomStringConvertible {
+    /// Compact form for the debug log, e.g. `connecting(Hana's game#1)`.
+    public var description: String {
+        switch self {
+        case .idle: "idle"
+        case .browsing: "browsing"
+        case .connecting(let host): "connecting(\(host.id))"
+        case .joined(let host): "joined(\(host.id))"
+        case .reconnecting(let host): "reconnecting(\(host.id))"
+        case .ended(let reason): "ended(\(reason))"
         }
     }
 }

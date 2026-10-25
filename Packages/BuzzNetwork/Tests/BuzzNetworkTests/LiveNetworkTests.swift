@@ -180,6 +180,18 @@ struct LiveNetworkTests {
     @MainActor
     @Test(.timeLimit(.minutes(1)))
     func sessionsJoinPlayARoundAndEnd() async throws {
+        // BUZZLIGHT_TRACE=1 also prints the debug log of this run (sessions + transport).
+        let trace = ProcessInfo.processInfo.environment["BUZZLIGHT_TRACE"] != nil
+        if trace {
+            DebugLog.shared.configure(directory: FileManager.default.temporaryDirectory
+                .appendingPathComponent("live-trace-\(UUID().uuidString)"), enabled: true)
+        }
+        defer {
+            if trace {
+                print(DebugLog.shared.contents())
+                DebugLog.shared.setEnabled(false)
+            }
+        }
         let name = uniqueSessionName("Session")
         let host = HostSession(hostID: PlayerID(rawValue: "h"), hostName: "Hana",
                                transport: NetworkTransport(displayName: "Hana"), sessionName: name)

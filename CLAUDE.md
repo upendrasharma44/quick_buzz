@@ -11,6 +11,7 @@ swift test --package-path Packages/BuzzCore         # fast, pure-Swift domain + 
 swift test --package-path Packages/BuzzNetwork
 swift test --package-path Packages/BuzzMultipeer      # legacy transport (DEBUG A/B only)
 BUZZLIGHT_LIVE_NETWORK=1 swift test --package-path Packages/BuzzNetwork       # real Network.framework on this Mac
+scripts/fetch-logs.sh                               # pull + merge debug logs from paired iPhones (logs/)
 BUZZLIGHT_LIVE_MULTIPEER=1 swift test --package-path Packages/BuzzMultipeer   # real Multipeer on this Mac
 xcodebuild test -project BuzzLight.xcodeproj -scheme BuzzLight \
   -destination 'platform=iOS Simulator,name=iPhone 17' -quiet   # app + all package tests
@@ -37,6 +38,7 @@ players), optionally `-BLRoute host|join|join-first` and `-profile.name <name>`.
   Never hand-edit the PNGs.
 - `design/sound/make-sounds.py` — generates `App/Resources/Sounds/buzz.wav` (stdlib Python). Never hand-edit the WAV.
 - `scripts/screenshots.sh` — App Store screenshots from demo mode; output in `docs/app-store/screenshots/`.
+- `scripts/fetch-logs.sh` — fetch debug logs from paired phones and merge them into one timeline.
 - `docs/app-store/`, `docs/release.md` — store metadata, review notes, privacy policy, release checklist.
 
 ## Mandatory rules
@@ -55,6 +57,10 @@ players), optionally `-BLRoute host|join|join-first` and `-profile.name <name>`.
 7. Work on a branch per stage (`stage-N-<slug>`), open a PR, and link the stage issue.
 
 ## Known pitfalls
+
+- Device problems are debugged from logs, not guesses: phones record with Settings → Diagnostics (or
+  `-BLDebugLog YES`), `scripts/fetch-logs.sh` pulls them. When adding session or transport behaviour,
+  add `debugLog(.session/.transport, …)` lines for its decisions and failures.
 
 - Phones need **Wi-Fi switched on**; a shared network isn't required with `NetworkTransport`
   (`includePeerToPeer`). Nothing in the app may claim Bluetooth play: MultipeerConnectivity hasn't used

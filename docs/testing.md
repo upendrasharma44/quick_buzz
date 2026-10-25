@@ -123,6 +123,43 @@ passes N1–N4, ADR 0007 is accepted and Multipeer is deleted.
 
 Record results (date, devices, iOS versions, pass/fail notes) in the Stage 3 issue (#4).
 
+## Debug log (devices)
+
+Opt-in trace of what each phone does, written by `DebugLog` (BuzzCore) to
+`Library/Application Support/DebugLog/debug.log` in the app container (rotates at 2 MB, previous
+kept as `debug.log.1`). Each line has the wall-clock time (to align phones), seconds since launch,
+a category (`app`, `session`, `transport`) and a message:
+
+```
+2026-10-25T19:00:10.889-04:00 +1.112s [session] player buzz pressed: status ready → buzzed, round #1 armed, sending
+2026-10-25T19:00:10.890-04:00 +1.113s [session] host ← message buzz(#1) from player#1
+```
+
+What is logged:
+- **Sessions:** start, phase changes, every transport event handled, every message sent, send
+  failures, buzz presses (with status before/after), timeouts, reconnect attempts, scene changes.
+- **Transport:** listener and browser states, Bonjour registration, browse results with interfaces,
+  every connection state change with the network path (`en0:wifi` = joined network, `awdl0:wifi` =
+  direct peer-to-peer Wi-Fi), viability and better-path changes, slow (> 200 ms) or failed sends,
+  receive errors, close frames, expiries, refusals.
+- **App:** a header per launch (build, phone model, iOS, player, transport), scene phase, which
+  transport each game uses.
+
+**Record:** on *every* phone, Settings → Diagnostics → **Record debug log** (or launch from Xcode with
+`-BLDebugLog YES`). Then reproduce the problem and note roughly when it happened.
+
+**Fetch:**
+- Phones paired with this Mac (USB, or same network with "Connect via network"), app installed from
+  Xcode: `scripts/fetch-logs.sh` (all reachable phones) or `scripts/fetch-logs.sh "Aadi’s iphone"`.
+  It writes `logs/<timestamp>/<phone>/debug.log` plus `merged.log`, all phones' lines in one
+  wall-clock timeline (`logs/` is git-ignored).
+- From any phone: Settings → Diagnostics → **Share debug log** (AirDrop it to the Mac).
+- Live while plugged in: Console.app, filter subsystem `com.upendrasharma.buzzlight`, category `debug`.
+- Simulator: `"$(xcrun simctl get_app_container booted com.upendrasharma.buzzlight data)/Library/Application Support/DebugLog/debug.log"`.
+- Mac live tests: `BUZZLIGHT_LIVE_NETWORK=1 BUZZLIGHT_TRACE=1 swift test --package-path Packages/BuzzNetwork --filter sessionsJoinPlayARoundAndEnd` prints a full trace.
+
+Clear it (Settings → Diagnostics → Clear debug log) before a new test so the files stay short.
+
 ## Debugging tips
 
 - Session logs: Console.app, subsystem `com.upendrasharma.buzzlight`, category `session`

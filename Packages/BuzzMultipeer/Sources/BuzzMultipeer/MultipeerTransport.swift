@@ -177,6 +177,7 @@ public final class MultipeerTransport: NSObject, GameTransport, @unchecked Senda
     // MARK: - Private
 
     private func invite(_ mcPeer: MCPeerID, via browser: MCNearbyServiceBrowser, token: UUID) {
+        debugLog(.transport, "mc invite → \(mcPeer.displayName)")
         browser.invitePeer(mcPeer, to: session, withContext: InvitationContext.current, timeout: Self.invitationTimeout)
         scheduleExpiry(of: mcPeer, token: token)
     }
@@ -205,6 +206,7 @@ public final class MultipeerTransport: NSObject, GameTransport, @unchecked Senda
         do {
             try session.send(data, toPeers: targets, with: .reliable)
         } catch {
+            debugLog(.transport, "mc send FAILED \(message.summary): \(error)")
             throw TransportError.underlying(error.localizedDescription)
         }
     }
@@ -234,6 +236,7 @@ enum InvitationContext {
 
 extension MultipeerTransport: MCSessionDelegate {
     public func session(_ session: MCSession, peer peerID: MCPeerID, didChange state: MCSessionState) {
+        debugLog(.transport, "mc \(peerID.displayName) state \(state.rawValue) (0 notConnected, 1 connecting, 2 connected)")
         emit(for: peerID) { peer in
             switch state {
             case .connected:
@@ -294,6 +297,7 @@ extension MultipeerTransport: MCNearbyServiceAdvertiserDelegate {
         withContext context: Data?,
         invitationHandler: @escaping (Bool, MCSession?) -> Void
     ) {
+        defer { debugLog(.transport, "mc invitation from \(peerID.displayName)") }
         let accept = lock.withLock { () -> Bool in
             guard !stopped, InvitationContext.isCompatible(context) else { return false }
             if connected.contains(peerID) || acceptedPending.contains(peerID) { return true }

@@ -61,7 +61,7 @@ xcodebuild test -project BuzzLight.xcodeproj -scheme BuzzLight \
 | `Config/` | Build settings; per-machine `Local.xcconfig` (git-ignored) |
 | `design/icon/` | App icon source; run `design/icon/make-icon.sh` (needs `librsvg`) to regenerate light/dark/tinted PNGs |
 | `design/sound/` | Buzzer sound source; `python3 design/sound/make-sounds.py` regenerates `App/Resources/Sounds/buzz.wav` |
-| `scripts/` | `screenshots.sh`: App Store screenshots from the simulator demo |
+| `scripts/` | `screenshots.sh`: App Store screenshots from the simulator demo · `fetch-logs.sh`: pull debug logs from phones |
 | `docs/` | [Roadmap](docs/roadmap.md) · [Architecture](docs/architecture.md) · [Protocol](docs/protocol.md) · [Testing](docs/testing.md) · [Release](docs/release.md) · [App Store](docs/app-store/) · [ADRs](docs/adr/) |
 
 App Store: _link added after approval_.

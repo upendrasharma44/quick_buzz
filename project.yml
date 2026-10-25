@@ -86,6 +86,7 @@ schemes:
       # DEBUG-only demo mode (see docs/testing.md). Tick these in Edit Scheme → Arguments.
       commandLineArguments:
         "-BLDemo YES": false
+        "-BLDebugLog YES": false
         "-BLTransport multipeer": false
         "-BLDemoAutoPlay YES": false
         "-BLDemoAutoBuzz fast": false
