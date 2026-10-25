@@ -19,13 +19,18 @@ xcodegen generate            # creates QuickBuzz.xcodeproj (not committed)
 open QuickBuzz.xcodeproj
 ```
 
-Set your `DEVELOPMENT_TEAM` in `project.yml` (or in Xcode) before running on a device.
+To run on an iPhone, create `Config/Local.xcconfig` (git-ignored) from
+`Config/Local.xcconfig.example` with your `DEVELOPMENT_TEAM`, then re-run `xcodegen generate`.
+
+No second phone handy? In a DEBUG build, launch with `-QBDemo YES` for a simulated network with
+pretend players (details in [`docs/testing.md`](docs/testing.md#demo-mode-simulator-debug-builds)).
 
 ## Test
 
 ```sh
-swift test --package-path Packages/BuzzCore        # game logic, ~1 s on the Mac
+swift test --package-path Packages/BuzzCore        # game logic + sessions, ~1 s on the Mac
 swift test --package-path Packages/BuzzMultipeer
+QUICKBUZZ_LIVE_MULTIPEER=1 swift test --package-path Packages/BuzzMultipeer   # real Multipeer, opt-in
 xcodebuild test -project QuickBuzz.xcodeproj -scheme QuickBuzz \
   -destination 'platform=iOS Simulator,name=iPhone 17'
 ```
@@ -34,9 +39,10 @@ xcodebuild test -project QuickBuzz.xcodeproj -scheme QuickBuzz \
 
 | Path | Contents |
 |---|---|
-| `App/` | SwiftUI app (views only) |
-| `Packages/BuzzCore` | Models, wire protocol, host/player engines, `GameTransport`, loopback transport |
+| `App/` | SwiftUI app: onboarding, home, host lobby, join flow, settings; profile and demo mode |
+| `Packages/BuzzCore` | Models, wire protocol, host/player engines and sessions, `GameTransport`, loopback transport |
 | `Packages/BuzzMultipeer` | MultipeerConnectivity transport |
+| `Config/` | Build settings; per-machine `Local.xcconfig` (git-ignored) |
 | `design/icon/` | App icon source; run `design/icon/make-icon.sh` (needs `librsvg`) to regenerate light/dark/tinted PNGs |
 | `docs/` | [Roadmap](docs/roadmap.md) · [Architecture](docs/architecture.md) · [Protocol](docs/protocol.md) · [Testing](docs/testing.md) · [ADRs](docs/adr/) |
 

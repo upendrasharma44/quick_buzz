@@ -30,11 +30,11 @@ struct LoopbackTransportTests {
         guard case .peerConnected? = await hostEvents.next() else { Issue.record("host saw no peer"); return }
         guard case .peerConnected? = await aliceEvents.next() else { Issue.record("alice not connected"); return }
         try await aliceTransport.deliver(alice.connected())
-        guard case .message(let hello, let from)? = await hostEvents.next() else { Issue.record("no hello"); return }
+        guard case .message(let hello, let from, _)? = await hostEvents.next() else { Issue.record("no hello"); return }
         try await hostTransport.deliver(host.receive(hello, from: from))
-        guard case .message(let welcome, _)? = await aliceEvents.next() else { Issue.record("no welcome"); return }
+        guard case .message(let welcome, _, _)? = await aliceEvents.next() else { Issue.record("no welcome"); return }
         _ = alice.receive(welcome)
-        guard case .message(let roster1, _)? = await aliceEvents.next() else { Issue.record("no roster"); return }
+        guard case .message(let roster1, _, _)? = await aliceEvents.next() else { Issue.record("no roster"); return }
         _ = alice.receive(roster1)
         #expect(alice.status == .waiting)
         #expect(alice.players.count == 2)
@@ -44,21 +44,21 @@ struct LoopbackTransportTests {
         _ = await hostEvents.next()
         _ = await bobEvents.next()
         try await bobTransport.deliver(bob.connected())
-        guard case .message(let helloB, let fromB)? = await hostEvents.next() else { Issue.record("no hello B"); return }
+        guard case .message(let helloB, let fromB, _)? = await hostEvents.next() else { Issue.record("no hello B"); return }
         try await hostTransport.deliver(host.receive(helloB, from: fromB))
-        guard case .message(let welcomeB, _)? = await bobEvents.next() else { Issue.record("no welcome B"); return }
+        guard case .message(let welcomeB, _, _)? = await bobEvents.next() else { Issue.record("no welcome B"); return }
         _ = bob.receive(welcomeB)
-        guard case .message(let rosterB, _)? = await bobEvents.next() else { Issue.record("no roster B"); return }
+        guard case .message(let rosterB, _, _)? = await bobEvents.next() else { Issue.record("no roster B"); return }
         _ = bob.receive(rosterB)
-        guard case .message(let rosterA, _)? = await aliceEvents.next() else { Issue.record("no roster A"); return }
+        guard case .message(let rosterA, _, _)? = await aliceEvents.next() else { Issue.record("no roster A"); return }
         _ = alice.receive(rosterA)
         #expect(alice.players.count == 3)
         #expect(bob.players.count == 3)
 
         // Arm, then Bob buzzes before Alice.
         try await hostTransport.deliver(host.arm())
-        guard case .message(let armedA, _)? = await aliceEvents.next() else { Issue.record("no armed A"); return }
-        guard case .message(let armedB, _)? = await bobEvents.next() else { Issue.record("no armed B"); return }
+        guard case .message(let armedA, _, _)? = await aliceEvents.next() else { Issue.record("no armed A"); return }
+        guard case .message(let armedB, _, _)? = await bobEvents.next() else { Issue.record("no armed B"); return }
         _ = alice.receive(armedA)
         _ = bob.receive(armedB)
         #expect(alice.status == .ready)
@@ -66,16 +66,16 @@ struct LoopbackTransportTests {
         try await bobTransport.deliver(bob.buzz())
         try await aliceTransport.deliver(alice.buzz())
         for _ in 0..<2 {
-            guard case .message(let buzz, let from)? = await hostEvents.next() else { Issue.record("no buzz"); return }
+            guard case .message(let buzz, let from, _)? = await hostEvents.next() else { Issue.record("no buzz"); return }
             try await hostTransport.deliver(host.receive(buzz, from: from))
         }
         #expect(host.round.ranking.map(\.playerID.rawValue) == ["B", "A"])
 
         // Both players receive two result updates; the last one is complete.
         for _ in 0..<2 {
-            guard case .message(let r, _)? = await aliceEvents.next() else { Issue.record("no result A"); return }
+            guard case .message(let r, _, _)? = await aliceEvents.next() else { Issue.record("no result A"); return }
             _ = alice.receive(r)
-            guard case .message(let rb, _)? = await bobEvents.next() else { Issue.record("no result B"); return }
+            guard case .message(let rb, _, _)? = await bobEvents.next() else { Issue.record("no result B"); return }
             _ = bob.receive(rb)
         }
         #expect(bob.status == .ranked(position: 1, deltaMilliseconds: 0))
@@ -88,6 +88,35 @@ struct LoopbackTransportTests {
         guard case .peerDisconnected? = await aliceEvents.next() else { Issue.record("alice not disconnected"); return }
         alice.disconnected()
         #expect(alice.status == .ended)
+    }
+
+    @Test func contractStartBrowsingIsIdempotentAndConnectReconfirms() async throws {
+        let network = LoopbackNetwork()
+        let host = await network.makeTransport(name: "host")
+        let player = await network.makeTransport(name: "p")
+        try await host.startHosting(sessionName: "g")
+        var events = player.events.makeAsyncIterator()
+
+        try await player.startBrowsing()
+        guard case .hostFound? = await events.next() else { Issue.record("no host"); return }
+        try await player.startBrowsing()  // already browsing: no duplicate report
+        try await player.connect(to: host.localPeer)
+        guard case .peerConnected? = await events.next() else { Issue.record("not connected"); return }
+        try await player.connect(to: host.localPeer)  // already connected: re-confirmed
+        guard case .peerConnected? = await events.next() else { Issue.record("not re-confirmed"); return }
+
+        await player.stopBrowsing()
+        try await player.startBrowsing()  // restarted after a stop: re-reports
+        guard case .hostFound? = await events.next() else { Issue.record("no re-report"); return }
+    }
+
+    @Test func eventsFinishAfterStop() async {
+        let network = LoopbackNetwork()
+        let t = await network.makeTransport(name: "x")
+        await t.stop()
+        await t.stop()
+        var events = t.events.makeAsyncIterator()
+        #expect(await events.next() == nil)
     }
 
     @Test func connectingToUnknownHostFails() async {
