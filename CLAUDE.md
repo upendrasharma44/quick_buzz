@@ -22,7 +22,8 @@ players), optionally `-BLRoute host|join|join-first` and `-profile.name <name>`.
 
 ## Layout
 
-- `App/` — SwiftUI app target (`BuzzLight`): views, `Profile`, `AppServices`, `DemoHub`. No game logic.
+- `App/` — SwiftUI app target (`BuzzLight`): views (`Features/Round` = host console, buzzer, end of game),
+  `Profile`, `AppServices`, `SoundPlayer`, `DemoHub`. No game logic.
 - `Packages/BuzzCore` — models, wire protocol, `GameTransport`, `HostEngine`, `PlayerEngine`,
   `HostSession`/`PlayerSession` (connection lifecycle), `LoopbackTransport`. No UIKit.
 - `Packages/BuzzMultipeer` — `MultipeerTransport` (MultipeerConnectivity → `GameTransport`).
@@ -31,6 +32,9 @@ players), optionally `-BLRoute host|join|join-first` and `-profile.name <name>`.
 - `design/icon/` — app icon source. Edit colours/shapes in `make-icon.sh` and re-run it
   (needs `brew install librsvg`); it writes the light/dark/tinted PNGs into `AppIcon.appiconset`.
   Never hand-edit the PNGs.
+- `design/sound/make-sounds.py` — generates `App/Resources/Sounds/buzz.wav` (stdlib Python). Never hand-edit the WAV.
+- `scripts/screenshots.sh` — App Store screenshots from demo mode; output in `docs/app-store/screenshots/`.
+- `docs/app-store/`, `docs/release.md` — store metadata, review notes, privacy policy, release checklist.
 
 ## Mandatory rules
 
@@ -48,6 +52,14 @@ players), optionally `-BLRoute host|join|join-first` and `-profile.name <name>`.
 7. Work on a branch per stage (`stage-N-<slug>`), open a PR, and link the stage issue.
 
 ## Known pitfalls
+
+- The buzzer must act on **touch-down** and call `PlayerSession.buzz()` synchronously in the gesture
+  callback (no `Task`/`await` first); sound and anything else come after. ADR 0005 will stamp the press
+  there in Stage 4.
+- Release identifiers are now BuzzLight's (ADR 0006): bundle ID `com.upendrasharma.buzzlight`, service
+  type `buzzlight`. After the first App Store release neither may change.
+- Version numbers live in `project.yml` (`MARKETING_VERSION`, `CURRENT_PROJECT_VERSION`); Info.plist
+  reads them. Every App Store upload needs a higher `CURRENT_PROJECT_VERSION`.
 
 - Multipeer discovery silently fails without `NSLocalNetworkUsageDescription` and `NSBonjourServices`
   (`_buzzlight._tcp`, `_buzzlight._udp`) in Info.plist — they are set in `project.yml`.

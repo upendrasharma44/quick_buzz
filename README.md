@@ -12,6 +12,15 @@ See [`docs/roadmap.md`](docs/roadmap.md) for the staged plan and current status.
 > Formerly *QuickBuzz*: renamed before the first release ([ADR 0006](docs/adr/0006-rename-quickbuzz-to-buzzlight.md)).
 > The repository keeps its original name, `quick_buzz`.
 
+## How to play
+
+1. Everyone opens BuzzLight on their iPhone, on the same Wi-Fi (or close together with Bluetooth on).
+2. The quiz master taps **Host a game**; everyone else taps **Join a game** and picks it.
+3. The host asks a question and taps **Arm buzzers**. Every player's button turns red.
+4. First to hit **BUZZ!** wins the round. The host's phone shows the order and the gaps in
+   milliseconds. Press before the buzzers open and you're locked out for that round.
+5. The host awards points (**+** / **−**) and taps **Next round**. **End** shows final scores.
+
 ## Build
 
 Requires Xcode 26+, Swift 6.2+, and [XcodeGen](https://github.com/yonaskolb/XcodeGen).
@@ -42,12 +51,16 @@ xcodebuild test -project BuzzLight.xcodeproj -scheme BuzzLight \
 
 | Path | Contents |
 |---|---|
-| `App/` | SwiftUI app: onboarding, home, host lobby, join flow, settings; profile and demo mode |
+| `App/` | SwiftUI app: onboarding, home, host console, join flow, buzzer, scores, settings; profile, sound and demo mode |
 | `Packages/BuzzCore` | Models, wire protocol, host/player engines and sessions, `GameTransport`, loopback transport |
 | `Packages/BuzzMultipeer` | MultipeerConnectivity transport |
 | `Config/` | Build settings; per-machine `Local.xcconfig` (git-ignored) |
 | `design/icon/` | App icon source; run `design/icon/make-icon.sh` (needs `librsvg`) to regenerate light/dark/tinted PNGs |
-| `docs/` | [Roadmap](docs/roadmap.md) · [Architecture](docs/architecture.md) · [Protocol](docs/protocol.md) · [Testing](docs/testing.md) · [ADRs](docs/adr/) |
+| `design/sound/` | Buzzer sound source; `python3 design/sound/make-sounds.py` regenerates `App/Resources/Sounds/buzz.wav` |
+| `scripts/` | `screenshots.sh`: App Store screenshots from the simulator demo |
+| `docs/` | [Roadmap](docs/roadmap.md) · [Architecture](docs/architecture.md) · [Protocol](docs/protocol.md) · [Testing](docs/testing.md) · [Release](docs/release.md) · [App Store](docs/app-store/) · [ADRs](docs/adr/) |
+
+App Store: _link added after approval_.
 
 ## License
 

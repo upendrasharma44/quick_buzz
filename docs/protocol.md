@@ -63,7 +63,7 @@ RoundID         { rawValue: Int }               // 1, 2, 3… per session
 Player          { id, name, isHost }
 BuzzEntry       { playerID, position (1-based), deltaMilliseconds (0 for winner) }
 RoundState      { id, phase: idle|armed|resolved, ranking: [BuzzEntry], lockedOut: [PlayerID] }
-SessionSnapshot { players: [Player], round: RoundState, scores: [PlayerID: Int] }
+SessionSnapshot { players: [Player], round: RoundState, scores: [PlayerID: Int], names: [PlayerID: String]? }
 ```
 
 ## Sequence (happy path)
@@ -93,3 +93,4 @@ Player                         Host
 | Version | Date | Change |
 |---|---|---|
 | 1 | 2026-10-25 | Initial protocol (Stage 1). |
+| 1 | 2026-10-25 | Stage 3: optional `SessionSnapshot.names` (everyone ever in the session, so late joiners can label departed scorers). Optional field ⇒ no bump (rule 2). |
