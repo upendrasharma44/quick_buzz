@@ -37,6 +37,7 @@ xcodebuild test -project QuickBuzz.xcodeproj -scheme QuickBuzz \
 | `App/` | SwiftUI app (views only) |
 | `Packages/BuzzCore` | Models, wire protocol, host/player engines, `GameTransport`, loopback transport |
 | `Packages/BuzzMultipeer` | MultipeerConnectivity transport |
+| `design/icon/` | App icon source; run `design/icon/make-icon.sh` (needs `librsvg`) to regenerate light/dark/tinted PNGs |
 | `docs/` | [Roadmap](docs/roadmap.md) · [Architecture](docs/architecture.md) · [Protocol](docs/protocol.md) · [Testing](docs/testing.md) · [ADRs](docs/adr/) |
 
 ## License
