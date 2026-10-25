@@ -1,14 +1,21 @@
 #!/usr/bin/env bash
 # Renders the BuzzLight app icon (light, dark, tinted) from one SVG template.
 # Usage: design/icon/make-icon.sh        Requires: rsvg-convert (brew install librsvg)
+#
+# Concept ("BuzzLight" = buzzer + light-year): the game-show buzzer dome with a lightning bolt,
+# circled by a tilted orbit ring carrying one glowing satellite orb, hovering on a cyan thruster
+# glow over a starfield. Original artwork; nothing from the Pixar character is used.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 OUT="$HERE/../../App/Resources/Assets.xcassets/AppIcon.appiconset"
+PREVIEW="${PREVIEW_DIR:-}"   # optional: also write small previews here
 
-# render <variant> <bg-top> <bg-bottom> <arc> <base-side> <base-top> <dome-light> <dome-dark> <bolt> <shine-opacity>
+# render <variant> <bg-top> <bg-bottom> <star> <ring> <orb> <glow> <base-side> <base-top>
+#        <dome-light> <dome-dark> <bolt> <shine-opacity>
 render() {
-  local name=$1 bg1=$2 bg2=$3 arc=$4 side=$5 top=$6 dome1=$7 dome2=$8 bolt=$9 shine=${10}
+  local name=$1 bg1=$2 bg2=$3 star=$4 ring=$5 orb=$6 glow=$7 side=$8 top=$9
+  local dome1=${10} dome2=${11} bolt=${12} shine=${13}
   local svg="$HERE/AppIcon-$name.svg"
   cat > "$svg" <<SVG
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
@@ -21,25 +28,56 @@ render() {
       <stop offset="0" stop-color="$dome1"/>
       <stop offset="1" stop-color="$dome2"/>
     </radialGradient>
+    <radialGradient id="orbFill" cx="0.35" cy="0.35" r="0.7">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="0.45" stop-color="$orb"/>
+      <stop offset="1" stop-color="$orb" stop-opacity="0.9"/>
+    </radialGradient>
+    <filter id="blur" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="26"/>
+    </filter>
+    <filter id="blurSmall" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="14"/>
+    </filter>
   </defs>
 
   <!-- Full-bleed square: iOS applies the corner mask. -->
   <rect width="1024" height="1024" fill="url(#bg)"/>
 
-  <!-- Signal arcs: the buzz going out to everyone nearby. -->
-  <g fill="none" stroke="$arc" stroke-width="38" stroke-linecap="round">
-    <path d="M260.9,415 A290,290 0 0 1 389.4,297.2"/>
-    <path d="M191.6,375 A370,370 0 0 1 355.6,224.7" opacity="0.6"/>
-    <path d="M634.6,297.2 A290,290 0 0 1 763.1,415"/>
-    <path d="M668.4,224.7 A370,370 0 0 1 832.4,375" opacity="0.6"/>
+  <!-- Starfield -->
+  <g fill="$star">
+    <circle cx="150" cy="178" r="7"/>
+    <circle cx="862" cy="150" r="6"/>
+    <circle cx="912" cy="330" r="4" opacity="0.7"/>
+    <circle cx="118" cy="440" r="4" opacity="0.7"/>
+    <circle cx="300" cy="118" r="4" opacity="0.6"/>
+    <circle cx="640" cy="120" r="5" opacity="0.8"/>
+    <circle cx="930" cy="560" r="5" opacity="0.6"/>
+    <circle cx="96" cy="700" r="5" opacity="0.5"/>
+    <circle cx="880" cy="860" r="4" opacity="0.5"/>
+    <circle cx="420" cy="200" r="3" opacity="0.6"/>
+    <!-- four-point sparkles -->
+    <path d="M772,208 C776,236 790,250 818,254 C790,258 776,272 772,300 C768,272 754,258 726,254 C754,250 768,236 772,208 Z"/>
+    <path d="M228,296 C230,312 238,320 254,322 C238,324 230,332 228,348 C226,332 218,324 202,322 C218,320 226,312 228,296 Z" opacity="0.85"/>
+    <path d="M846,700 C847,712 853,718 865,719 C853,720 847,726 846,738 C845,726 839,720 827,719 C839,718 845,712 846,700 Z" opacity="0.7"/>
+  </g>
+
+  <!-- Thruster glow under the base -->
+  <ellipse cx="512" cy="760" rx="300" ry="70" fill="$glow" opacity="0.75" filter="url(#blur)"/>
+
+  <!-- Orbit ring, back half (behind the buzzer) -->
+  <g transform="rotate(-16 512 545)" fill="none" stroke-linecap="round">
+    <path d="M922,545 A410,118 0 0 0 102,545" stroke="$ring" stroke-width="46" opacity="0.22"/>
+    <path d="M922,545 A410,118 0 0 0 102,545" stroke="$ring" stroke-width="24" opacity="0.9"/>
   </g>
 
   <!-- Shadow -->
-  <ellipse cx="512" cy="790" rx="300" ry="52" fill="#000" opacity="0.18"/>
+  <ellipse cx="512" cy="790" rx="300" ry="52" fill="#000" opacity="0.22"/>
 
   <!-- Buzzer base -->
   <path d="M232,640 L232,745 A280,70 0 0 0 792,745 L792,640 Z" fill="$side"/>
   <ellipse cx="512" cy="640" rx="280" ry="70" fill="$top"/>
+  <ellipse cx="512" cy="640" rx="280" ry="70" fill="none" stroke="$glow" stroke-width="6" opacity="0.55"/>
 
   <!-- Dome -->
   <path d="M302,630 A210,205 0 0 1 722,630 A210,52 0 0 1 302,630 Z" fill="url(#dome)"/>
@@ -48,13 +86,25 @@ render() {
   <!-- Lightning bolt -->
   <path d="M535,438 L452,566 L506,566 L474,668 L580,516 L522,516 L566,438 Z"
         fill="$bolt" stroke-linejoin="round"/>
+
+  <!-- Orbit ring, front half (in front of the buzzer) with the satellite orb -->
+  <g transform="rotate(-16 512 545)" fill="none" stroke-linecap="round">
+    <path d="M922,545 A410,118 0 0 1 102,545" stroke="$ring" stroke-width="46" opacity="0.22"/>
+    <path d="M922,545 A410,118 0 0 1 102,545" stroke="$ring" stroke-width="24" opacity="0.95"/>
+    <circle cx="717" cy="647" r="44" fill="$orb" opacity="0.8" filter="url(#blurSmall)"/>
+    <circle cx="717" cy="647" r="30" fill="url(#orbFill)"/>
+  </g>
 </svg>
 SVG
   rsvg-convert -w 1024 -h 1024 "$svg" -o "$OUT/AppIcon-$name.png"
+  if [[ -n "$PREVIEW" ]]; then
+    rsvg-convert -w 256 -h 256 "$svg" -o "$PREVIEW/AppIcon-$name-256.png"
+    rsvg-convert -w 64 -h 64 "$svg" -o "$PREVIEW/AppIcon-$name-64.png"
+  fi
   echo "rendered $name"
 }
 
-#        variant  bg-top    bg-bottom arc      base-side base-top dome-light dome-dark bolt     shine
-render   light    "#FF9A3D" "#FF3B5C" "#FFFFFF" "#23153A" "#3B2860" "#FF5A4F"  "#C8102E" "#FFD23F" 0.35
-render   dark     "#24143A" "#120A1F" "#FF8A3D" "#0B0614" "#2E2050" "#FF5A4F"  "#B00D28" "#FFD23F" 0.30
-render   tinted   "#000000" "#000000" "#FFFFFF" "#3A3A3A" "#6A6A6A" "#F2F2F2"  "#BDBDBD" "#3A3A3A" 0.55
+#        variant  bg-top    bg-bottom star      ring      orb       glow      base-side base-top  dome-light dome-dark bolt      shine
+render   light    "#2B1A6B" "#FF4D6D" "#FFFFFF" "#FFFFFF" "#4FE3FF" "#4FE3FF" "#1B1038" "#3B2860" "#FF5A4F"  "#C8102E" "#FFD23F" 0.35
+render   dark     "#1A0F3D" "#07040F" "#FFFFFF" "#CFF4FF" "#4FE3FF" "#2BB8FF" "#0B0614" "#2E2050" "#FF5A4F"  "#B00D28" "#FFD23F" 0.30
+render   tinted   "#000000" "#000000" "#FFFFFF" "#FFFFFF" "#FFFFFF" "#9A9A9A" "#3A3A3A" "#6A6A6A" "#F2F2F2"  "#BDBDBD" "#3A3A3A" 0.55

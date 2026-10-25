@@ -90,7 +90,7 @@ Built on 2026-10-25 (ranking stays host arrival order; ADR 0005 follows in Stage
 - App renamed **QuickBuzz → BuzzLight** before release (ADR 0006).
 - Release prep: v1.0.0 (1), iPhone-only, launch screen, export-compliance flag,
   `docs/app-store/` (metadata, review notes, privacy policy, screenshots), `docs/release.md`.
-- App icon (2026-10-25): buzzer + lightning bolt + signal arcs, light/dark/tinted, from `design/icon/make-icon.sh`.
+- App icon (2026-10-25, BuzzLight redesign): buzzer + lightning bolt circled by an orbit ring with a satellite orb over a starfield, light/dark/tinted, from `design/icon/make-icon.sh` (concept in `design/icon/README.md`).
 - Remaining (owner): 3-phone script in `docs/testing.md`, App Store Connect record, TestFlight,
   submission, then tag `v1.0.0` — see `docs/release.md`.
 
