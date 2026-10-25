@@ -29,7 +29,8 @@ lifecycle, runs in pure Swift packages; the app target contains SwiftUI views an
 | `BuzzMultipeer` | BuzzCore, MultipeerConnectivity | `MultipeerTransport`: discovery and messaging over Wi-Fi / peer-to-peer Wi-Fi / Bluetooth. |
 | `App` | BuzzCore, BuzzMultipeer | Views and navigation; `Profile` persistence; `AppServices.makeTransport` (Multipeer, or loopback in demo mode); DEBUG demo mode. |
 
-Decisions are recorded in `docs/adr/` (session layer and connection lifecycle: ADR 0004).
+Decisions are recorded in `docs/adr/` (session layer and connection lifecycle: ADR 0004;
+proposed Stage 4 ranking by clock-offset-corrected press timestamps: ADR 0005).
 
 ## Layers and data flow
 

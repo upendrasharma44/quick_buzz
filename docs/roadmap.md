@@ -49,6 +49,8 @@ and internet rooms.
 - Ranking = order buzzes arrive at the host; deltas from a monotonic host clock. Device clocks are never compared.
 - Stale-round buzzes ignored; duplicates dropped; a buzz before the round is armed locks that player out for the round.
 - Stage 4 adds RTT confidence and an optional tie threshold; the host remains authoritative.
+  Proposed design: per-player clock-offset estimation and local press timestamps,
+  arrival order kept as fallback (`docs/adr/0005-clock-offset-press-timestamp-ranking.md`).
 
 ## Stages
 
@@ -84,8 +86,10 @@ App icon already done (2026-10-25): buzzer + lightning bolt + signal arcs, light
 variants generated from `design/icon/make-icon.sh`.
 
 ### Stage 4 — Robustness & fairness polish (v1.x)
-RTT estimation and confidence display, optional tie threshold, host approval / session PIN,
-duplicate-name handling, host handoff spike, accessibility, localization scaffold, iPad layout.
+RTT estimation and confidence display, optional tie threshold (design proposed in ADR 0005:
+clock-offset estimation + local press timestamps, host still the only arbiter), host approval /
+session PIN, duplicate-name handling, host handoff spike, accessibility, localization scaffold,
+iPad layout.
 
 ### Stage 5 — Plus tier (StoreKit 2)
 `BuzzStore` package: `plus.yearly` auto-renewable subscription at $0.99/yr, entitlement object
