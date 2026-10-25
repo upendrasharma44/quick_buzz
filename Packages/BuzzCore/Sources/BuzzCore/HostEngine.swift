@@ -16,6 +16,9 @@ public final class HostEngine {
     public private(set) var isEnded = false
 
     public let host: Player
+    /// Everyone who has been in this session, including players who have since left. Never shrinks,
+    /// so rankings and scores stay readable after someone disconnects.
+    public private(set) var knownNames: [PlayerID: String]
     private var peerToPlayer: [PeerID: PlayerID] = [:]
     private var playerToPeer: [PlayerID: PeerID] = [:]
     private var firstBuzzAt: ContinuousClock.Instant?
@@ -23,10 +26,13 @@ public final class HostEngine {
     public init(hostID: PlayerID, hostName: String) {
         host = Player(id: hostID, name: hostName, isHost: true)
         players = [host]
+        knownNames = [hostID: hostName]
         round = RoundState(id: RoundID(1))
     }
 
-    public var snapshot: SessionSnapshot { SessionSnapshot(players: players, round: round, scores: scores) }
+    public var snapshot: SessionSnapshot {
+        SessionSnapshot(players: players, round: round, scores: scores, names: knownNames)
+    }
 
     public func player(for peer: PeerID) -> Player? {
         guard let id = peerToPlayer[peer] else { return nil }
@@ -34,7 +40,12 @@ public final class HostEngine {
     }
 
     public func name(of playerID: PlayerID) -> String {
-        players.first { $0.id == playerID }?.name ?? "?"
+        players.first { $0.id == playerID }?.name ?? knownNames[playerID] ?? "?"
+    }
+
+    /// `true` while the player is connected (they may have scores after leaving).
+    public func isPresent(_ playerID: PlayerID) -> Bool {
+        players.contains { $0.id == playerID }
     }
 
     // MARK: - Transport events
@@ -86,8 +97,10 @@ public final class HostEngine {
     /// Convenience for the "Next round" button: reset then arm.
     public func nextRound() -> [Outbound] { reset() + arm() }
 
+    /// Adds `points` (may be negative, to undo) to any player who has been in the session, even if
+    /// they have since left. The host does not play and cannot score.
     public func award(points: Int, to playerID: PlayerID) -> [Outbound] {
-        guard !isEnded, players.contains(where: { $0.id == playerID }) else { return [] }
+        guard !isEnded, playerID != host.id, knownNames[playerID] != nil else { return [] }
         scores[playerID, default: 0] += points
         return [.all(.scores(scores))]
     }
@@ -115,6 +128,7 @@ public final class HostEngine {
         }
         peerToPlayer[peer] = playerID
         playerToPeer[playerID] = peer
+        knownNames[playerID] = name
         if let index = players.firstIndex(where: { $0.id == playerID }) {
             players[index].name = name
         } else {

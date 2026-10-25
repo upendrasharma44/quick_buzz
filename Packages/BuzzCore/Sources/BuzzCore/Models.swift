@@ -84,11 +84,16 @@ public struct SessionSnapshot: Hashable, Codable, Sendable {
     public var players: [Player]
     public var round: RoundState
     public var scores: [PlayerID: Int]
+    /// Names of everyone who has been in the session, including players who left (so their
+    /// scores and rankings can be labelled). Optional on the wire: added in Stage 3 without a
+    /// version bump (protocol versioning rule 2).
+    public var names: [PlayerID: String]?
 
-    public init(players: [Player], round: RoundState, scores: [PlayerID: Int] = [:]) {
+    public init(players: [Player], round: RoundState, scores: [PlayerID: Int] = [:], names: [PlayerID: String]? = nil) {
         self.players = players
         self.round = round
         self.scores = scores
+        self.names = names
     }
 }
 

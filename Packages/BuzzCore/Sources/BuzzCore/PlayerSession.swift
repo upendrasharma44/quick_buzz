@@ -101,6 +101,16 @@ public final class PlayerSession {
         await finish(.left)
     }
 
+    /// Press the buzzer. Deliberately synchronous: the engine registers the press in the same
+    /// main-actor turn as the touch-down that triggered it, and only the send is deferred. Keep it
+    /// that way (ADR 0005 will stamp the press here).
+    public func buzz() {
+        guard case .joined = phase else { return }
+        let outbounds = engine.buzz()
+        guard !outbounds.isEmpty else { return }
+        Task { await deliver(outbounds) }
+    }
+
     /// Call when the scene moves to the background. The system drops the connection there, and the
     /// reconnect deadline must not run down while the app is suspended.
     public func sceneDidEnterBackground() {

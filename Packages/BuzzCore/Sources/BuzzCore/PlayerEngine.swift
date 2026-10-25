@@ -28,15 +28,23 @@ public final class PlayerEngine {
     public private(set) var round: RoundState?
     public private(set) var scores: [PlayerID: Int] = [:]
     public private(set) var status: PlayerStatus = .joining
+    /// Everyone seen in this session, including players who left. Never shrinks.
+    public private(set) var knownNames: [PlayerID: String]
 
     public init(id: PlayerID, name: String) {
         me = Player(id: id, name: name)
+        knownNames = [id: name]
     }
 
     public var host: Player? { players.first { $0.isHost } }
 
     public func name(of playerID: PlayerID) -> String {
-        playerID == me.id ? me.name : players.first { $0.id == playerID }?.name ?? "?"
+        playerID == me.id ? me.name : players.first { $0.id == playerID }?.name ?? knownNames[playerID] ?? "?"
+    }
+
+    /// `true` while the player is connected (they may have scores after leaving).
+    public func isPresent(_ playerID: PlayerID) -> Bool {
+        players.contains { $0.id == playerID }
     }
 
     // MARK: - Transport events
@@ -54,10 +62,13 @@ public final class PlayerEngine {
     public func receive(_ message: GameMessage) -> [Outbound] {
         switch message {
         case .welcome(let snapshot):
+            knownNames.merge(snapshot.names ?? [:]) { _, new in new }
+            remember(snapshot.players)
             players = snapshot.players
             scores = snapshot.scores
             apply(round: snapshot.round)
         case .roster(let players):
+            remember(players)
             self.players = players
         case .armed(let roundID):
             var r = round ?? RoundState(id: roundID)
@@ -102,6 +113,10 @@ public final class PlayerEngine {
     }
 
     // MARK: - Private
+
+    private func remember(_ players: [Player]) {
+        for player in players { knownNames[player.id] = player.name }
+    }
 
     private func apply(round: RoundState) {
         self.round = round

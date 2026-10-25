@@ -13,7 +13,8 @@ struct ProtocolTests {
             round: RoundState(id: round, phase: .resolved,
                               ranking: [BuzzEntry(playerID: bob, position: 1, deltaMilliseconds: 0)],
                               lockedOut: [alice]),
-            scores: [bob: 2]
+            scores: [bob: 2],
+            names: [alice: "Alice", bob: "Bob", PlayerID(rawValue: "gone"): "Gone"]
         )
         return [
             .hello(playerID: bob, name: "Bob"),
@@ -36,6 +37,15 @@ struct ProtocolTests {
     func roundTrip(message: GameMessage) throws {
         let data = try GameMessageCodec.encode(message)
         #expect(try GameMessageCodec.decode(data) == message)
+    }
+
+    @Test("a snapshot without names (pre-Stage 3 sender) still decodes")
+    func snapshotNamesAreOptional() throws {
+        let json = #"{"version":1,"message":{"welcome":{"snapshot":{"players":[],"round":{"id":{"rawValue":1},"phase":"idle","ranking":[],"lockedOut":[]},"scores":[]}}}}"#
+        guard case .welcome(let snapshot) = try GameMessageCodec.decode(Data(json.utf8)) else {
+            Issue.record("not a welcome"); return
+        }
+        #expect(snapshot.names == nil)
     }
 
     @Test("envelope carries the protocol version")

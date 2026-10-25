@@ -37,7 +37,8 @@ struct HostEngineTests {
         let out = engine.receive(.hello(playerID: alice, name: "Alice"), from: peerA)
         let expectedPlayers = [Player(id: hostID, name: "Host", isHost: true), Player(id: alice, name: "Alice")]
         #expect(out == [
-            .peer(peerA, .welcome(snapshot: SessionSnapshot(players: expectedPlayers, round: RoundState(id: RoundID(1))))),
+            .peer(peerA, .welcome(snapshot: SessionSnapshot(players: expectedPlayers, round: RoundState(id: RoundID(1)),
+                                                     names: [hostID: "Host", alice: "Alice"]))),
             .all(.roster(players: expectedPlayers)),
         ])
         #expect(engine.player(for: peerA)?.id == alice)
@@ -157,6 +158,19 @@ struct HostEngineTests {
         let out = engine.award(points: 2, to: alice)
         #expect(out == [.all(.scores([alice: 3]))])
         #expect(engine.award(points: 1, to: carol).isEmpty, "unknown player")
+        #expect(engine.award(points: 1, to: hostID).isEmpty, "the host does not score")
+        #expect(engine.award(points: -1, to: alice) == [.all(.scores([alice: 2]))], "negative points undo")
+    }
+
+    @Test func departedPlayersKeepTheirNameAndCanStillScore() {
+        let engine = lobby()
+        _ = engine.arm()
+        _ = engine.receive(.buzz(round: RoundID(1)), from: peerA, at: t0)
+        _ = engine.peerDisconnected(peerA)
+        #expect(!engine.isPresent(alice))
+        #expect(engine.name(of: alice) == "Alice")
+        #expect(engine.award(points: 1, to: alice) == [.all(.scores([alice: 1]))])
+        #expect(engine.snapshot.names?[alice] == "Alice", "late joiners learn departed names")
     }
 
     @Test func kickNotifiesPlayerAndUpdatesRoster() {
