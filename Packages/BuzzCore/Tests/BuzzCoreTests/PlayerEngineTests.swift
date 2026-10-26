@@ -120,3 +120,68 @@ struct PlayerEngineTests {
         #expect(engine.buzz().isEmpty)
     }
 }
+
+@MainActor
+@Suite("PlayerEngine buzz re-send")
+struct PlayerEngineResendTests {
+    let hostID = PlayerID(rawValue: "host")
+    let alice = PlayerID(rawValue: "alice")
+    let bob = PlayerID(rawValue: "bob")
+
+    func armedAndBuzzed() -> PlayerEngine {
+        let engine = PlayerEngine(id: alice, name: "Alice")
+        _ = engine.connected()
+        let players = [Player(id: hostID, name: "Host", isHost: true), Player(id: alice, name: "Alice")]
+        _ = engine.receive(.welcome(snapshot: SessionSnapshot(players: players, round: RoundState(id: RoundID(1)))))
+        _ = engine.receive(.armed(round: RoundID(1)))
+        _ = engine.buzz()
+        return engine
+    }
+
+    func welcome(_ round: RoundState) -> GameMessage {
+        .welcome(snapshot: SessionSnapshot(players: [Player(id: hostID, name: "Host", isHost: true)], round: round))
+    }
+
+    @Test func buzzLostWithTheLinkIsResentAfterReconnect() {
+        let engine = armedAndBuzzed()
+        #expect(engine.unconfirmedBuzz == RoundID(1))
+        _ = engine.connected()  // reconnect
+        let out = engine.receive(welcome(RoundState(id: RoundID(1), phase: .armed)))
+        #expect(out == [.all(.buzz(round: RoundID(1)))])
+        #expect(engine.status == .buzzed, "the button keeps saying Buzzed, not BUZZ! again")
+    }
+
+    @Test func buzzThatArrivedIsNotResent() {
+        let engine = armedAndBuzzed()
+        _ = engine.connected()
+        let ranked = RoundState(id: RoundID(1), phase: .resolved,
+                                ranking: [BuzzEntry(playerID: alice, position: 1, deltaMilliseconds: 0)])
+        #expect(engine.receive(welcome(ranked)).isEmpty)
+        #expect(engine.status == .ranked(position: 1, deltaMilliseconds: 0))
+        #expect(engine.unconfirmedBuzz == nil)
+    }
+
+    @Test func nothingIsResentOnceTheRoundMovedOn() {
+        let engine = armedAndBuzzed()
+        _ = engine.connected()
+        #expect(engine.receive(welcome(RoundState(id: RoundID(2), phase: .armed))).isEmpty)
+        #expect(engine.unconfirmedBuzz == nil)
+    }
+
+    @Test func resultConfirmsTheBuzz() {
+        let engine = armedAndBuzzed()
+        _ = engine.receive(.result(round: RoundID(1), ranking: [
+            BuzzEntry(playerID: bob, position: 1, deltaMilliseconds: 0),
+            BuzzEntry(playerID: alice, position: 2, deltaMilliseconds: 40),
+        ]))
+        #expect(engine.unconfirmedBuzz == nil)
+    }
+
+    @Test func earlyPressIsNeverResent() {
+        let engine = PlayerEngine(id: alice, name: "Alice")
+        _ = engine.connected()
+        _ = engine.receive(.welcome(snapshot: SessionSnapshot(players: [], round: RoundState(id: RoundID(1)))))
+        _ = engine.buzz()  // waiting: an early press
+        #expect(engine.unconfirmedBuzz == nil)
+    }
+}

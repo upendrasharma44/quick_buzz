@@ -30,6 +30,9 @@ public final class PlayerEngine {
     public private(set) var status: PlayerStatus = .joining
     /// Everyone seen in this session, including players who left. Never shrinks.
     public private(set) var knownNames: [PlayerID: String]
+    /// A buzz sent in an open round that the host hasn't ranked yet. If the link drops and the
+    /// reconnect's `welcome` shows the round still open without us, the buzz is sent again.
+    public private(set) var unconfirmedBuzz: RoundID?
 
     public init(id: PlayerID, name: String) {
         me = Player(id: id, name: name)
@@ -67,6 +70,13 @@ public final class PlayerEngine {
             players = snapshot.players
             scores = snapshot.scores
             apply(round: snapshot.round)
+            // A press that was lost with the old link: deliver it now (late beats lost).
+            if let pending = unconfirmedBuzz, pending == snapshot.round.id, snapshot.round.phase != .idle,
+               !snapshot.round.lockedOut.contains(me.id),
+               !snapshot.round.ranking.contains(where: { $0.playerID == me.id }) {
+                status = .buzzed
+                return [.all(.buzz(round: pending))]
+            }
         case .roster(let players):
             remember(players)
             self.players = players
@@ -108,7 +118,10 @@ public final class PlayerEngine {
     /// press is recorded as a lockout by the host rather than silently swallowed.
     public func buzz() -> [Outbound] {
         guard let round, status == .ready || status == .waiting else { return [] }
-        if status == .ready { status = .buzzed }
+        if status == .ready {
+            status = .buzzed
+            unconfirmedBuzz = round.id
+        }
         return [.all(.buzz(round: round.id))]
     }
 
@@ -120,6 +133,10 @@ public final class PlayerEngine {
 
     private func apply(round: RoundState) {
         self.round = round
+        if let pending = unconfirmedBuzz,
+           pending != round.id || round.ranking.contains(where: { $0.playerID == me.id }) || round.lockedOut.contains(me.id) {
+            unconfirmedBuzz = nil  // confirmed, or the round moved on
+        }
         if status == .kicked || status == .ended { return }
         if round.lockedOut.contains(me.id) {
             status = .lockedOut

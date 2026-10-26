@@ -78,6 +78,7 @@ struct DebugLogTests {
 
 /// The sessions' own trace through a real (loopback) game.
 @MainActor
+/// Every test that reconfigures `DebugLog.shared` lives here so they never run concurrently.
 @Suite("Session tracing", .serialized)
 struct SessionTracingTests {
     @Test func aRoundLeavesAReadableTrace() async throws {
@@ -117,5 +118,25 @@ struct SessionTracingTests {
         ] {
             #expect(trace.contains(expected), "missing: \(expected)")
         }
+    }
+
+    @Test func roundTripTimesAreLogged() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("rtt-\(UUID().uuidString)")
+        DebugLog.shared.configure(directory: directory, enabled: true)
+        defer { DebugLog.shared.setEnabled(false) }
+
+        let network = LoopbackNetwork()
+        let host = HostSession(hostID: PlayerID(rawValue: "host"), hostName: "Hana",
+                               transport: await network.makeTransport(name: "Hana"), flushDelay: .zero,
+                               heartbeatInterval: .milliseconds(10))
+        await host.start()
+        let pat = PlayerSession(playerID: PlayerID(rawValue: "pat"), name: "Pat",
+                                transport: await network.makeTransport(name: "Pat"))
+        await pat.start()
+        #expect(await eventually { !pat.hosts.isEmpty })
+        await pat.join(try #require(pat.hosts.first))
+        #expect(await eventually(timeout: .seconds(3)) { DebugLog.shared.contents().contains("host rtt Pat: min ") })
+        #expect(!DebugLog.shared.contents().contains("ping("), "heartbeats themselves stay out of the log")
+        await host.end()
     }
 }

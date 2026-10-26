@@ -20,8 +20,11 @@ final class SoundPlayer {
     /// Configures the audio session and loads the sounds. Safe to call more than once.
     func prepare() {
         guard buzz == nil else { return }
-        try? AVAudioSession.sharedInstance().setCategory(.ambient)
-        try? AVAudioSession.sharedInstance().setActive(true)
+        // Activating the session can block; Xcode warns against doing it on the main thread.
+        Task.detached(priority: .userInitiated) {
+            try? AVAudioSession.sharedInstance().setCategory(.ambient)
+            try? AVAudioSession.sharedInstance().setActive(true)
+        }
         if let url = Bundle.main.url(forResource: "buzz", withExtension: "wav") {
             buzz = try? AVAudioPlayer(contentsOf: url)
             buzz?.prepareToPlay()

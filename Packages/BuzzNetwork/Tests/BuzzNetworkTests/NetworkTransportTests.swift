@@ -71,6 +71,20 @@ struct NetworkParametersTests {
         #expect(tcp.enableKeepalive)
     }
 
+    @Test func keepaliveToleratesPeerToPeerStalls() throws {
+        let tcp = try #require(NetworkParameters.make().defaultProtocolStack.transportProtocol as? NWProtocolTCP.Options)
+        let giveUp = tcp.keepaliveIdle + tcp.keepaliveInterval * tcp.keepaliveCount
+        #expect(giveUp >= 20, "longer than the sessions' heartbeat timeouts (10–12 s)")
+    }
+
+    @Test func browsingStaysOnOnlyForPeerToPeerLinks() {
+        #expect(NetworkTransport.needsBrowsingToStayUp(interfaceNames: ["awdl0"]))
+        #expect(NetworkTransport.needsBrowsingToStayUp(interfaceNames: ["en0", "llw0"]))
+        #expect(!NetworkTransport.needsBrowsingToStayUp(interfaceNames: ["en0"]))
+        #expect(!NetworkTransport.needsBrowsingToStayUp(interfaceNames: ["pdp_ip0", "lo0"]))
+        #expect(!NetworkTransport.needsBrowsingToStayUp(interfaceNames: []))
+    }
+
     @Test func presharedKeyIsAFixed256BitValue() {
         #expect(NetworkParameters.presharedKey.count == 32)
         #expect(NetworkParameters.presharedKey == NetworkParameters.presharedKey)

@@ -137,12 +137,29 @@ public final class NetworkTransport: GameTransport, @unchecked Sendable {
         created.start(queue: queue)
     }
 
+    /// Stops browsing, **unless** a connection runs over peer-to-peer Wi-Fi. On a phone whose only
+    /// route to the host is AWDL, iOS tears the link down a couple of seconds after the last browse
+    /// stops: device logs (2026-10-25) showed every such connection dying 2–3 s after joining and
+    /// recovering the moment browsing restarted. Over infrastructure Wi-Fi the browser is stopped,
+    /// since an active browse makes the radio hop to AWDL channels and adds jitter.
     public func stopBrowsing() async {
-        let previous = lock.withLock { () -> NWBrowser? in
+        let (previous, peerToPeer) = lock.withLock { () -> (NWBrowser?, [String]) in
+            let interfaces = connections.values.flatMap { connection in
+                (connection.currentPath?.availableInterfaces ?? []).map(\.name)
+            }
+            guard !Self.needsBrowsingToStayUp(interfaceNames: interfaces) else { return (nil, interfaces) }
             defer { browser = nil }
-            return browser
+            return (browser, interfaces)
+        }
+        if previous == nil, Self.needsBrowsingToStayUp(interfaceNames: peerToPeer) {
+            debugLog(.transport, "keeping the browser running: connected over peer-to-peer Wi-Fi \(peerToPeer)")
         }
         previous?.cancel()
+    }
+
+    /// True when any of the interfaces is peer-to-peer Wi-Fi (`awdl*`, or `llw*` low-latency WLAN).
+    static func needsBrowsingToStayUp(interfaceNames: [String]) -> Bool {
+        interfaceNames.contains { $0.hasPrefix("awdl") || $0.hasPrefix("llw") }
     }
 
     public func connect(to host: PeerID) async throws {
@@ -209,9 +226,9 @@ public final class NetworkTransport: GameTransport, @unchecked Sendable {
         transmit(data, to: [target])
     }
 
-    /// Drops one connection as if the network had (tests: reconnection).
-    func dropConnection(to peer: PeerID) {
+    public func disconnect(_ peer: PeerID) async {
         let connection = lock.withLock { connections[peer] }
+        debugLog(.transport, "conn \(peer) disconnect requested\(connection == nil ? " (no such connection)" : "")")
         connection?.cancel()
     }
 

@@ -26,10 +26,13 @@ enum NetworkParameters {
 
         let tcp = NWProtocolTCP.Options()
         tcp.noDelay = true            // small frames go out immediately: buzz timing matters
-        tcp.enableKeepalive = true    // notice a vanished peer
-        tcp.keepaliveIdle = 5
-        tcp.keepaliveInterval = 2
-        tcp.keepaliveCount = 3
+        // Last-resort dead-peer detection (~30 s). The sessions' 1 s heartbeat normally decides
+        // first (10–12 s of silence). The old 5 s + 3×2 s setting killed peer-to-peer links during
+        // ordinary stalls, on both phones at once.
+        tcp.enableKeepalive = true
+        tcp.keepaliveIdle = 10
+        tcp.keepaliveInterval = 5
+        tcp.keepaliveCount = 4
 
         let parameters = NWParameters(tls: tls, tcp: tcp)
         parameters.includePeerToPeer = true

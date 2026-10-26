@@ -157,6 +157,14 @@ public final class MultipeerTransport: NSObject, GameTransport, @unchecked Senda
         try transmit(message, to: targets)
     }
 
+    /// MultipeerConnectivity can't drop one peer. A player's only link is the host, so a player
+    /// drops the whole session; on the host this is a no-op (legacy transport, ADR 0007).
+    public func disconnect(_ peer: PeerID) async {
+        let isPlayer = lock.withLock { advertiser == nil && !stopped }
+        debugLog(.transport, "mc disconnect \(peer) requested\(isPlayer ? "" : " (ignored on host)")")
+        if isPlayer { session.disconnect() }
+    }
+
     public func stop() async {
         let parts = lock.withLock { () -> (MCNearbyServiceAdvertiser?, MCNearbyServiceBrowser?)? in
             guard !stopped else { return nil }

@@ -158,7 +158,7 @@ struct LiveNetworkTests {
         }
 
         let mark = playerLog.count
-        host.dropConnection(to: first)
+        await host.disconnect(first)
         _ = try await playerLog.first(within: .seconds(20), after: mark) { event -> PeerID? in
             if case .peerDisconnected(let p) = event, p == found.id { p } else { nil }
         }

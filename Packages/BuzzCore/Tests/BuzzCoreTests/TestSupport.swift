@@ -29,6 +29,7 @@ final class ScriptedTransport: GameTransport, @unchecked Sendable {
     private let lock = NSLock()
     private var _sent: [Sent] = []
     private var _connectCalls: [PeerID] = []
+    private var _disconnectCalls: [PeerID] = []
 
     /// - Parameter autoConnect: answer `connect(to:)` with `.peerConnected` (a host that accepts).
     init(autoConnect: Bool = true) {
@@ -38,6 +39,7 @@ final class ScriptedTransport: GameTransport, @unchecked Sendable {
 
     var sent: [Sent] { lock.withLock { _sent } }
     var connectCalls: [PeerID] { lock.withLock { _connectCalls } }
+    var disconnectCalls: [PeerID] { lock.withLock { _disconnectCalls } }
 
     func emit(_ event: TransportEvent) { continuation.yield(event) }
 
@@ -53,6 +55,10 @@ final class ScriptedTransport: GameTransport, @unchecked Sendable {
     }
     func broadcast(_ message: GameMessage) async throws {
         lock.withLock { _sent.append(Sent(message: message, to: nil)) }
+    }
+    func disconnect(_ peer: PeerID) async {
+        lock.withLock { _disconnectCalls.append(peer) }
+        emit(.peerDisconnected(peer))
     }
     func stop() async { continuation.finish() }
 }
