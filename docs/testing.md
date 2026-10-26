@@ -161,6 +161,17 @@ What is logged:
 
 Clear it (Settings → Diagnostics → Clear debug log) before a new test so the files stay short.
 
+What healthy and broken peer-to-peer play look like in the merged log:
+- Healthy: the player's join is followed by `keeping the browser running: connected over
+  peer-to-peer Wi-Fi ["awdl0"]`, then `host rtt Aadi: min … / avg … / max … ms` every ~10 s, and
+  buzzes show up on both sides within tens of milliseconds.
+- Broken (fixed 2026-10-25): `browser state cancelled` right after `→ joined`, then sends with no
+  matching `←` on the other phone, and both sides failing with `Operation timed out` within the
+  same ~30 ms.
+- Silence handling: `host: Aadi silent for …; dropping the link` or `player: host silent for …;
+  dropping the link`, followed by a reconnect. `player re-sending a buzz the host never got` means a
+  press survived a drop.
+
 ## Debugging tips
 
 - Session logs: Console.app, subsystem `com.upendrasharma.buzzlight`, category `session`

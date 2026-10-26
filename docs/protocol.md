@@ -57,7 +57,7 @@ same `session`/`v` keys under the service type `buzzlight-mc`, plus a `v=<versio
 | `scores` | H→* | `[PlayerID: Int]` | Host awarded points. |
 | `kick` | H→P | — | Player removed. Followed by `roster` to everyone else. |
 | `end` | H→* | — | Session over. |
-| `ping` / `pong` | both | `id: UInt32` | RTT estimation (Stage 4). Receivers answer `ping` with `pong` carrying the same id. |
+| `ping` / `pong` | H→* / P→H | `id: UInt32` | **Heartbeat:** the host pings every player once a second; players answer `pong` with the same id. Either side treats 10–12 s of silence as a dead link. Round-trip times are logged (and are the raw data for ADR 0005). |
 
 ### Types
 

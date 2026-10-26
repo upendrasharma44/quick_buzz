@@ -68,6 +68,9 @@ players), optionally `-BLRoute host|join|join-first` and `-profile.name <name>`.
 - `NetworkTransport` receive loop: a WebSocket close frame or `context.isFinal` must cancel the connection;
   otherwise `receiveMessage` completes empty forever and disconnects surface only via keepalive (~7 s).
   Live test `discoverConnectExchangeAndDisconnect` asserts < 3 s.
+- Peer-to-peer Wi-Fi (`awdl0`) stays up on a phone only while it browses or advertises: never stop
+  the player's browser while its connection is over `awdl*` (`NetworkTransport.stopBrowsing` checks).
+  Don't make TCP keepalive aggressive; liveness is the sessions' 1 s heartbeat (10–12 s silence).
 - `NetworkTransport` and `MultipeerTransport` use different Bonjour types (`_buzzlight._tcp` vs
   `_buzzlight-mc._tcp`); every phone in a game must use the same transport (DEBUG Settings → Developer).
 

@@ -131,7 +131,9 @@ background and resumes it by itself, and players reconnect on their own.
  ended(reason) ◀── leave() · kick · host `end` · version mismatch ─────┴─▶ ended(.connectionLost)
 ```
 
-- `joined` stops browsing (saves radio time). On a drop, `reconnecting` clears the (stale) host
+- `joined` asks the transport to stop browsing. `NetworkTransport` only does so over
+  infrastructure Wi-Fi: on a peer-to-peer link (`awdl0`) the browse is what keeps iOS from tearing
+  the link down (ADR 0007, device findings). On a drop, `reconnecting` clears the (stale) host
   list, starts browsing again and asks the transport to connect right away; the transport holds the
   invitation until the host is found. It is re-requested whenever the host is re-found and after
   each failure (`retryDelay`, 1 s).
@@ -141,6 +143,15 @@ background and resumes it by itself, and players reconnect on their own.
   `sceneDidBecomeActive()` starts a fresh one and retries immediately. (`Task.sleep` keeps counting
   while the app is suspended, so without this a player who glanced at another app for 30 s would be
   sent home the moment they returned.)
+- **Liveness:** the host pings every player each second (`ping`/`pong`, protocol v1). A player
+  not heard from for 12 s is dropped by the host; a player that hears nothing from the host for
+  10 s drops the link itself (`GameTransport.disconnect(_:)`) and reconnects. Both sides decide
+  from the same silence, so neither keeps sending into a link only it believes in. Pings and pongs
+  are kept out of the debug log, apart from round-trip summaries (`host rtt …` every 10 samples, and
+  spikes over 500 ms).
+- **Buzz re-send:** `PlayerEngine.unconfirmedBuzz` remembers a buzz until the host ranks it. If the
+  reconnect's `welcome` shows that round still open without this player, the buzz is sent again:
+  delivered late, ranked by its (late) arrival, rather than lost.
 - A player addresses everything to the host, whatever the engine's recipients say: the session
   mesh also links players to each other (see below). Frames and version errors from peers other
   than the host are ignored.
@@ -157,7 +168,9 @@ func startHosting(sessionName:)           // no-op while advertising
 func startBrowsing() / stopBrowsing()     // no-op while browsing; restart after stop re-reports hosts
 func connect(to:)                         // to a host this transport has discovered; result via
                                           // .peerConnected (immediate if already connected) / .failed(.connectionFailed)
-func send(_:to:) / broadcast(_:) / stop() // stop is idempotent
+func send(_:to:) / broadcast(_:)
+func disconnect(_ peer:)                  // drop one link (silence); emits .peerDisconnected
+func stop()                               // idempotent
 ```
 
 `TransportEvent`: `hostFound`, `hostLost`, `peerConnected`, `peerDisconnected`,

@@ -71,6 +71,25 @@ discover each other. Release builds always use Network.framework.
   - Callbacks from replaced objects are ignored.
   - A WebSocket close frame or end of stream cancels the connection at once. Without that, the
     receive loop spins until keepalive (~7 s). A live test asserts the disconnect is seen within 3 s.
+- **Device findings (2026-10-25, debug logs from both phones).** Host on Wi-Fi, player off it:
+  the player found and joined the game over peer-to-peer Wi-Fi (`awdl0`), but in 6 of 6
+  connections traffic stopped 2–3 s after joining. Buzzes and `armed` were lost, and TCP
+  keepalive then killed both ends at the same moment ("Operation timed out"). Each time, the
+  player's browser had been stopped 1–2 ms after joining, and every browser restart brought the
+  link straight back. iOS keeps AWDL up on a phone only while something there browses or
+  advertises. Changes:
+  - `NetworkTransport.stopBrowsing()` keeps the browser running while a connection uses
+    peer-to-peer Wi-Fi (`awdl*`/`llw*`). It still stops on infrastructure Wi-Fi, where an
+    active browse would make the radio hop channels and add jitter.
+  - The sessions send a 1 s heartbeat (`ping`/`pong`, already in protocol v1). Both sides drop a
+    link after 10–12 s of silence (`GameTransport.disconnect(_:)`), so neither side keeps
+    sending into a connection only it believes in. Round-trip times go to the debug log.
+  - TCP keepalive relaxed from ~11 s to ~30 s, as a last resort only.
+  - A buzz the host never ranked is re-sent after a reconnect if the round is still open
+    (`PlayerEngine.unconfirmedBuzz`).
+  - Apple confirms peer-to-peer Wi-Fi has inherent stalls when one phone is also on
+    infrastructure Wi-Fi, with no API to raise it to low-latency mode (forums 819926). Wi-Fi
+    Aware (iOS 26+) has a realtime mode, worth evaluating in Stage 7.
 - Known limitation: a phone trying to join a full game (8th player) only gets "Couldn't join"
   after the 18 s connection expiry. Fix in Stage 4: advertise the player count in TXT and show the
   game as full in the Join list.
