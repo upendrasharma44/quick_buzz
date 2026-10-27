@@ -323,8 +323,8 @@ public final class PlayerSession {
         timeoutTask = nil
     }
 
-    /// Players only ever talk to the host. Recipients are ignored on purpose: MultipeerConnectivity
-    /// links every member of a session, so a "broadcast" would also reach the other players.
+    /// Players only ever talk to the host. Recipients are ignored on purpose: a transport may link
+    /// players to each other too (MultipeerConnectivity did), and a "broadcast" would then reach them.
     private func deliver(_ outbounds: [Outbound]) async {
         guard let target = host else {
             debugLog(.session, "player send DROPPED (no host, phase \(phase)): \(outbounds.map(\.message.summary))")

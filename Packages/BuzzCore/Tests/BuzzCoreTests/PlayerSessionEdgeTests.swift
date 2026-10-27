@@ -3,7 +3,7 @@ import Testing
 @testable import BuzzCore
 
 /// Player-session behaviour that depends on transport details LoopbackTransport does not model:
-/// MultipeerConnectivity's full mesh, version mismatches, and app suspension.
+/// frames from peers other than the host, version mismatches, and app suspension.
 @MainActor
 @Suite("PlayerSession edge cases")
 struct PlayerSessionEdgeTests {

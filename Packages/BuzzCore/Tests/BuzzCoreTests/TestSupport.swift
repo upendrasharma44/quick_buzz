@@ -17,7 +17,7 @@ func eventually(
 }
 
 /// Test double whose events are injected by the test and whose outgoing traffic is recorded.
-/// Models what LoopbackTransport cannot: MultipeerConnectivity's full mesh (other players' frames),
+/// Models what LoopbackTransport cannot: frames from peers other than the host (a mesh transport),
 /// version-mismatch errors, and hosts that never answer.
 final class ScriptedTransport: GameTransport, @unchecked Sendable {
     struct Sent: Equatable { let message: GameMessage; let to: [PeerID]? }  // nil = broadcast

@@ -1,7 +1,7 @@
 # ADR 0007: Network.framework transport replaces MultipeerConnectivity
 
-- Status: Proposed — becomes Accepted when the device connectivity matrix in `docs/testing.md`
-  passes rows N1–N4 (then `BuzzMultipeer` is deleted)
+- Status: **Accepted** (2026-10-27): the device connectivity matrix in `docs/testing.md` passed
+  N1–N5 (iPhone 14 host, iPhone 12 player, iOS 27). `BuzzMultipeer` deleted the same day.
 - Date: 2026-10-25
 - Decision makers: @upendrasharma44
 - Supersedes: [ADR 0001](0001-multipeer-transport-for-v1.md)
@@ -93,9 +93,9 @@ discover each other. Release builds always use Network.framework.
 - Known limitation: a phone trying to join a full game (8th player) only gets "Couldn't join"
   after the 18 s connection expiry. Fix in Stage 4: advertise the player count in TXT and show the
   game as full in the Join list.
-- When this ADR is accepted:
-  - Delete `Packages/BuzzMultipeer`, the Developer transport picker's MC option, and the
-    `_buzzlight-mc._tcp` / `_buzzlight-mc._udp` Bonjour entries.
-  - Re-run the screenshots.
+- On acceptance (done 2026-10-27):
+  - `Packages/BuzzMultipeer`, the DEBUG Developer → Transport picker (`TransportKind`,
+    `-BLTransport`) and the `_buzzlight-mc._tcp/_udp` Bonjour entries were deleted.
+  - App Store screenshots unchanged: none of the captured screens changed.
 - ADR 0005's future sync frames can use a UDP `NWConnection` later if reliable delivery proves too
   slow; that was not possible with MC.

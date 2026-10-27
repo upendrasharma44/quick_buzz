@@ -12,13 +12,12 @@ Every frame is one JSON object produced by `GameMessageCodec`:
 ```
 
 - `version` — `Envelope.currentVersion`, currently **1**. A receiver that gets a different version
-  throws `ProtocolError.unsupportedVersion`; `MultipeerTransport` turns that into
+  throws `ProtocolError.unsupportedVersion`; `NetworkTransport` turns that into
   `.failed(.incompatibleVersion(v, from: peer))`. A player's session ends with "Different app
   versions" only if that peer is its host; the host shows an inline notice.
 - `message` — Swift `Codable` synthesized enum encoding: the case name is the single key; cases
   without payload encode as `{ "kick": {} }`.
-- Keys are sorted for stable output. Messages are small (< 2 KB); Multipeer sends them as
-  `.reliable` data frames.
+- Keys are sorted for stable output. Messages are small (< 2 KB); each is one binary WebSocket message.
 
 ## Discovery and transport (Network.framework, ADR 0007)
 
@@ -39,8 +38,8 @@ Before any frame is exchanged, players find hosts through Bonjour:
 Players read `v` to grey out incompatible hosts before connecting; a host that receives a frame
 with another version closes that connection.
 
-The legacy Multipeer transport (DEBUG A/B only, ADR 0001 → 0007) used MC discovery info with the
-same `session`/`v` keys under the service type `buzzlight-mc`, plus a `v=<version>` invitation context.
+Before ADR 0007 (accepted 2026-10-27) discovery ran over MultipeerConnectivity with the same
+`session`/`v` keys plus a `v=<version>` invitation context; that transport has been removed.
 
 ## Messages
 

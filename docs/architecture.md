@@ -9,7 +9,7 @@ lifecycle, runs in pure Swift packages; the app target contains SwiftUI views an
 ```
 ┌──────────────────────────── App (SwiftUI, iOS 18) ─────────────────────────────┐
 │ Onboarding · Home · Lobby (Host/Join flows) · Round · Settings · Shared        │
-│ Services: Profile · AppServices (transport factory, TransportKind) · Sound · Demo │
+│ Services: Profile · AppServices (transport factory) · Diagnostics · Sound · Demo │
 └───────────────┬───────────────────────────────────┬────────────────────────────┘
                 │ makeTransport()                   │ HostSession / PlayerSession
      ┌──────────▼──────────┐              ┌─────────▼──────────────────┐
@@ -28,19 +28,19 @@ lifecycle, runs in pure Swift packages; the app target contains SwiftUI views an
 |---|---|---|
 | `BuzzCore` | Foundation, Observation, os | Models, wire protocol, `GameTransport` contract, host/player engines, **host/player sessions** (connection lifecycle), in-process loopback transport. No UIKit, no networking framework. |
 | `BuzzNetwork` | BuzzCore, Network, CryptoKit | `NetworkTransport` (ADR 0007): Bonjour discovery, one TLS-PSK WebSocket connection per player, peer-to-peer Wi-Fi allowed. **The transport every release build uses.** |
-| `BuzzMultipeer` | BuzzCore, MultipeerConnectivity | Legacy `MultipeerTransport`, DEBUG A/B only; deleted once ADR 0007 is accepted. Only connects phones on the same Wi-Fi network on current iOS. |
-| `App` | BuzzCore, BuzzNetwork, BuzzMultipeer | Views and navigation; `Profile` persistence; `AppServices.makeTransport` (`TransportKind`: Network.framework, DEBUG-switchable to Multipeer; loopback in demo mode); DEBUG demo mode. |
+| `App` | BuzzCore, BuzzNetwork | Views and navigation; `Profile` persistence; `AppServices.makeTransport` (`NetworkTransport`, or loopback in demo mode); diagnostics; DEBUG demo mode. |
 
 Decisions are recorded in `docs/adr/` (session layer and connection lifecycle: ADR 0004;
 proposed Stage 4 ranking by clock-offset-corrected press timestamps: ADR 0005;
-rename from QuickBuzz to BuzzLight: ADR 0006; Network.framework replaces Multipeer: ADR 0007).
+rename from QuickBuzz to BuzzLight: ADR 0006; Network.framework replaced MultipeerConnectivity: ADR 0007,
+accepted 2026-10-27).
 
 ## Layers and data flow
 
 ```
- MC delegate queue            any task                 @MainActor
- ─────────────────            ────────                 ──────────
- MultipeerTransport ──events──▶ AsyncStream ──▶ HostSession / PlayerSession ──▶ HostEngine / PlayerEngine
+ Network queue                any task                 @MainActor
+ ─────────────                ────────                 ──────────
+ NetworkTransport ───events──▶ AsyncStream ──▶ HostSession / PlayerSession ──▶ HostEngine / PlayerEngine
    (stamps receivedAt)                                  │        ▲                     │ [Outbound]
                                                         │        └─────────────────────┘
                                 transport.deliver(...) ◀┘
@@ -58,8 +58,8 @@ rename from QuickBuzz to BuzzLight: ADR 0006; Network.framework replaces Multipe
 
 - `PeerID` — local handle minted by a transport (`"<displayName>#<n>"`), unique per transport
   instance, never sent over the wire. Two players named "Sam" are two different `PeerID`s.
-  `MultipeerTransport` keeps a `PeerRegistry` mapping `MCPeerID ⇄ PeerID`; the same `MCPeerID`
-  seen again (e.g. after a browser restart) maps to the same `PeerID`.
+  `NetworkTransport` keeps a `PeerRegistry` mapping each host's Bonjour endpoint to its `PeerID`;
+  the same host seen again (e.g. after a browser restart) maps to the same `PeerID`.
 - `PlayerID` — stable UUID generated once per install by `Profile` and sent in `hello`. The host
   keeps `PeerID ⇄ PlayerID` maps so a reconnecting player keeps their identity and score.
 
@@ -115,10 +115,9 @@ An early press is still **sent** to the host so that the lockout is recorded aut
 ```
 
 `end()` sends `end` to everyone, waits `flushDelay` (300 ms) so the frame leaves the device, then
-stops the transport. `kick(_:)` sends `kick` to that player and a new roster to everyone;
-MultipeerConnectivity cannot drop a single peer, so the kicked player disconnects itself.
-The host needs no scene-phase handling: MultipeerConnectivity pauses advertising in the
-background and resumes it by itself, and players reconnect on their own.
+stops the transport. `kick(_:)` sends `kick` to that player and a new roster to everyone; the
+kicked player disconnects itself. The host needs no scene-phase handling: iOS pauses Bonjour
+advertising in the background and resumes it by itself, and players reconnect on their own.
 
 ### `PlayerSession.phase`
 
@@ -192,34 +191,14 @@ func stop()                               // idempotent
 Known limitation: a phone joining a full game only hears "Couldn't join" after the 18 s expiry
 (Stage 4: advertise the player count in TXT).
 
-### `MultipeerTransport` (legacy)
+### History: `MultipeerTransport` (removed 2026-10-27)
 
-Kept only for DEBUG A/B device tests until ADR 0007 is accepted. Its service type is now
-`buzzlight-mc` (`_buzzlight-mc._tcp/_udp`) so it never sees `NetworkTransport` games.
-On current iOS it only connected phones on the same Wi-Fi network, and it has not used Bluetooth
-since iOS 11; that is why it is being replaced.
-
-
-- Discovery info: `session` = session name (≤ 120 bytes), `v` = protocol version → `DiscoveredHost.isCompatible`.
-- `MCPeerID.displayName` = the user's name, trimmed, ≤ 63 UTF-8 bytes, `"Player"` if empty.
-- Encryption `.required`; data sent `.reliable` as `GameMessageCodec` JSON.
-- Host auto-accepts invitations whose context carries the same protocol version, until
-  `maxPlayers` (7: an `MCSession` holds 8 peers incl. host). Accepted-but-not-yet-connected
-  invitations count against the cap, so simultaneous joins cannot overfill the session.
-- Delegate callbacks arrive on MultipeerConnectivity's queues; state is guarded by one lock and
-  events are yielded under it so their order matches the callbacks. No MC API is called with the
-  lock held. After `stop()` no further events are emitted; callbacks from a replaced browser or
-  advertiser are ignored.
-
-MultipeerConnectivity behaviours the transport works around (each verified with real MC on macOS;
-the first has a live regression test):
-
-| Behaviour | Handling |
-|---|---|
-| An invitation sent through a browser that has not reported that peer is **silently dropped** (no `.connecting`, no `.notConnected`). | `connect(to:)` defers the invitation until the *current* browser finds the peer. Every pending invitation expires after 18 s (`invitationExpiry`, > the 15 s MC timeout, < the 20 s session timeout) with `.connectionFailed`. Repeat requests while pending are ignored. |
-| Advertising and browsing pause in the background and **resume by themselves** in the foreground. | `startHosting`/`startBrowsing` never replace a running advertiser/browser (replacing one would trigger the dropped-invitation problem). |
-| A session **links all members to each other**, not just to the host. | Players address the host explicitly (`PlayerSession.deliver`); the host's `broadcast` is the only fan-out. Version errors carry the sending peer. |
-| A link can complete after the player gave up on it. | `connect(to:)` on an already-connected peer re-emits `.peerConnected`, so the next join succeeds instead of hanging. |
+v1 started on MultipeerConnectivity (ADR 0001). It needed three workarounds (invitations dropped by a
+fresh browser, no replacing running browsers, players meshed to each other). On real phones it only
+connected phones on the same Wi-Fi network, and it hasn't used Bluetooth since iOS 11. It was
+replaced by `NetworkTransport` (ADR 0007) and deleted once the device connectivity matrix passed.
+The protocol-level lessons stay: players address the host explicitly, version errors carry the
+sending peer, and `connect` re-confirms an existing link.
 
 ### `LoopbackTransport`
 
@@ -232,7 +211,7 @@ In-process routing through a `LoopbackNetwork` actor, used by tests, previews an
 | Piece | Role |
 |---|---|
 | `Profile` | `@Observable`; `PlayerID` (created once) and display name (trimmed, whitespace collapsed, ≤ 24 chars) in `UserDefaults` keys `profile.playerID` / `profile.name`. |
-| `AppServices` | Injected via environment. `makeTransport(name)` returns a `NetworkTransport` (or, in DEBUG with `TransportKind.multipeer`, a `MultipeerTransport`), or a loopback transport in demo mode. The kind is read per game. |
+| `AppServices` | Injected via environment. `makeTransport(name)` returns a `NetworkTransport`, or a loopback transport in demo mode. |
 | `RootView` | `NameEntryView` until a name exists, then `HomeView`. |
 | `HostFlowView` / `JoinFlowView` | Create the session in `.task`, end/leave on exit, keep the screen awake. `JoinFlowView` forwards `scenePhase` `.background`/`.active` to the session. Back button hidden: exit goes through End/Leave so the session is always closed. |
 | `JoinBrowserView` rows | Hosts on another protocol version are shown disabled with "Needs the same BuzzLight version". |
@@ -249,7 +228,7 @@ In-process routing through a `LoopbackNetwork` actor, used by tests, previews an
 ## Concurrency model
 
 Swift 6 language mode, strict concurrency. Engines and sessions are `@MainActor @Observable`.
-Transports are `Sendable` classes guarded by a lock (Multipeer, Loopback) or an actor
+Transports are `Sendable` classes guarded by a lock (Network, Loopback) or an actor
 (`LoopbackNetwork`), and push events through an `AsyncStream` with a single consumer: the session.
 
 ## Persistence (later stages)

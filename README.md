@@ -44,8 +44,6 @@ pretend players (details in [`docs/testing.md`](docs/testing.md#demo-mode-simula
 swift test --package-path Packages/BuzzCore        # game logic + sessions, ~1 s on the Mac
 swift test --package-path Packages/BuzzNetwork
 BUZZLIGHT_LIVE_NETWORK=1 swift test --package-path Packages/BuzzNetwork       # real networking, opt-in
-swift test --package-path Packages/BuzzMultipeer                              # legacy transport
-BUZZLIGHT_LIVE_MULTIPEER=1 swift test --package-path Packages/BuzzMultipeer   # real Multipeer, opt-in
 xcodebuild test -project BuzzLight.xcodeproj -scheme BuzzLight \
   -destination 'platform=iOS Simulator,name=iPhone 17'
 ```
@@ -57,7 +55,6 @@ xcodebuild test -project BuzzLight.xcodeproj -scheme BuzzLight \
 | `App/` | SwiftUI app: onboarding, home, host console, join flow, buzzer, scores, settings; profile, sound and demo mode |
 | `Packages/BuzzCore` | Models, wire protocol, host/player engines and sessions, `GameTransport`, loopback transport |
 | `Packages/BuzzNetwork` | Network.framework transport: Bonjour discovery, TLS WebSocket connections, direct Wi-Fi |
-| `Packages/BuzzMultipeer` | Legacy MultipeerConnectivity transport (DEBUG A/B only, being removed — ADR 0007) |
 | `Config/` | Build settings; per-machine `Local.xcconfig` (git-ignored) |
 | `design/icon/` | App icon source; run `design/icon/make-icon.sh` (needs `librsvg`) to regenerate light/dark/tinted PNGs |
 | `design/sound/` | Buzzer sound source; `python3 design/sound/make-sounds.py` regenerates `App/Resources/Sounds/buzz.wav` |
