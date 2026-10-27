@@ -2,12 +2,16 @@
 # Captures App Store / review screenshots from the simulator using DEBUG demo mode.
 #
 # Usage: scripts/screenshots.sh [simulator name] [output dir]
-#   defaults: "iPhone 17 Pro Max" (6.9", 1320×2868) and docs/app-store/screenshots
+#   defaults: "iPhone 17" and docs/app-store/screenshots/<simulator name, lower-kebab-case>
+#   App Store Connect slots (see docs/app-store/metadata.md → Screenshots):
+#     "iPhone 17"         → 1206×2622, Dynamic Island medium display — the REQUIRED iPhone slot
+#     "iPhone 17 Pro Max" → 1320×2868, Dynamic Island large display — optional
+# Every capture is flattened (alpha removed); App Store Connect rejects images with alpha.
 # Requires: xcodegen, Xcode. Builds a Debug app (demo mode is DEBUG-only) into a temp folder.
 set -euo pipefail
 
-SIM="${1:-iPhone 17 Pro Max}"
-OUT="${2:-docs/app-store/screenshots}"
+SIM="${1:-iPhone 17}"
+OUT="${2:-docs/app-store/screenshots/$(echo "$SIM" | tr '[:upper:] ' '[:lower:]-')}"
 BUNDLE=com.upendrasharma.buzzlight
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DERIVED="$(mktemp -d)"
@@ -51,3 +55,4 @@ shot 5-join-list         2   -BLRoute join
 shot 6-player-too-early  4.5 -BLRoute join-first -BLDemoAutoBuzz early
 
 xcrun simctl status_bar "$SIM" clear
+swift "$ROOT/scripts/flatten-png.swift" "$OUT"/*.png

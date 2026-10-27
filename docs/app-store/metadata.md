@@ -1,7 +1,8 @@
 # App Store metadata — BuzzLight 1.0
 
 Paste-ready text for App Store Connect. Character limits are Apple's; counts are noted where they
-are tight. Screenshots: `docs/app-store/screenshots/` (regenerate with `scripts/screenshots.sh`).
+are tight. Screenshots: `docs/app-store/screenshots/<device>/` (regenerate with `scripts/screenshots.sh`).
+Optional product page header: `design/header/` (see *Product page header* below).
 
 ## App information
 
@@ -75,7 +76,23 @@ early-press lockout, points and final scores.
 `ITSAppUsesNonExemptEncryption = NO` is set in Info.plist. The app uses only encryption built into
 iOS (TLS via Network.framework), which is exempt. Answer accordingly if asked.
 
-## Screenshots (6.9" iPhone, 1320 × 2868)
+## Screenshots
+
+App Store Connect's iPhone slots and the folder to upload into each (sizes from Apple's
+[screenshot specifications](https://developer.apple.com/help/app-store-connect/reference/app-information/screenshot-specifications),
+checked 2026-10-27). Uploading a file into a slot with a different size fails with *"File
+dimensions are invalid"*.
+
+| App Store Connect slot | Accepted portrait sizes | Required? | Folder |
+|---|---|---|---|
+| iPhone, Dynamic Island medium display (6.1") | 1179 × 2556, 1206 × 2622 | **Yes** | `iphone-17/` (1206 × 2622) |
+| iPhone, Dynamic Island large display (6.7") | 1260 × 2736, 1290 × 2796, 1320 × 2868 | Optional | `iphone-17-pro-max/` (1320 × 2868) |
+
+Every file is opaque PNG: Apple rejects screenshots with an alpha channel, and the simulator's
+captures have one, so `scripts/screenshots.sh` flattens them with `scripts/flatten-png.swift`.
+The app is iPhone-only (`TARGETED_DEVICE_FAMILY = 1`), so no iPad screenshots are needed.
+
+Both folders hold the same six shots, in upload order:
 
 | File | Shows | Suggested caption |
 |---|---|---|
@@ -85,3 +102,11 @@ iOS (TLS via Network.framework), which is exempt. Answer accordingly if asked.
 | `4-host-scores.png` | Second round results and scoreboard | Award points, run round after round |
 | `5-join-list.png` | Join screen listing a nearby game | Join a game nearby — no accounts |
 | `6-player-too-early.png` | Locked out for pressing early | Jump the gun and you sit the round out |
+
+## Product page header (optional)
+
+`design/header/ProductPageHeader-3840x1646.png`: the 21:9 product page header, 3840 × 1646, opaque
+PNG. App Store Connect → the version → Product Page Information → *Header and Search Results* →
+Header → Upload. Creative assets are optional and only show on iOS 27 and later; leaving the slot
+empty does not block submission. It has no text, so it needs no localisation. Regenerate with
+`python3 design/header/make-header.py`; design notes in `design/header/README.md`.
