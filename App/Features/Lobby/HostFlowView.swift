@@ -64,7 +64,7 @@ struct HostFlowView: View {
             await created.start()
             services.demo?.hostStarted(created)
         }
-        // No scene-phase handling needed: MultipeerConnectivity pauses advertising in the background
+        // No scene-phase handling needed: iOS pauses Bonjour advertising in the background
         // and resumes it by itself; players reconnect on their own (ADR 0004).
         .onDisappear {
             guard let session else { return }

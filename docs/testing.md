@@ -7,8 +7,6 @@
 | Domain + sessions | `swift test --package-path Packages/BuzzCore` | 72 tests. Protocol round trips; `HostEngine` arbitration; `PlayerEngine` statuses; loopback contract; `HostSession`/`PlayerSession` over `LoopbackTransport` (discovery, join, same-name players, failed and timed-out joins, leave, kick, host end, host crash → connection lost, drop → reconnect with score kept) and over `ScriptedTransport` (player traffic goes to the host only, mesh frames and other peers' version errors ignored, incompatible hosts not joinable, reconnect deadline paused in background, late link usable on retry); full rounds through sessions (arm → buzz order → results everywhere → award → next round, early-press lockout, repeated taps, reconnect mid-round, departed names for late joiners); `Standings`. ~0.5 s. |
 | Transport (Network.framework) | `swift test --package-path Packages/BuzzNetwork` | 11 tests: Bonjour service type, player limit, connection expiry ordering, parameters (peer-to-peer on; WebSocket over TLS over TCP; noDelay + keepalive), PSK size, TXT round trip, error paths, `stop()` semantics. |
 | Transport, live (Network.framework) | `BUZZLIGHT_LIVE_NETWORK=1 swift test --package-path Packages/BuzzNetwork` | **Real Network.framework** on this Mac: discover → connect → messages both ways → host stop noticed **within 3 s**; connect right after a browser restart; 8th player refused; frame from another protocol version gets the player turned away; reconnect after a drop; full `HostSession`/`PlayerSession` round. ~25 s (the refusal waits out the 18 s expiry). Opt-in; not in CI. |
-| Transport (legacy Multipeer) | `swift test --package-path Packages/BuzzMultipeer` | Service type, player cap, invitation timeout/expiry ordering, version checks (discovery info + invitation context), `PeerRegistry`, display-name sanitising, discovery-info limits, send/connect error paths, `stop()` semantics. |
-| Transport, live (legacy Multipeer) | `BUZZLIGHT_LIVE_MULTIPEER=1 swift test --package-path Packages/BuzzMultipeer` | **Real MultipeerConnectivity** between two transports on this Mac: discover → invite → connect → messages both ways → disconnect; invitation through a fresh browser (regression: fails in ~20 s without the deferral, passes in ~1 s with it); the full `HostSession`/`PlayerSession` stack joining, syncing the roster and ending. ~5 s. Opt-in (needs the local network); not run in CI. macOS may ask for Local Network permission for your terminal the first time. |
 | App | `xcodebuild test -project BuzzLight.xcodeproj -scheme BuzzLight -destination 'platform=iOS Simulator,name=iPhone 17'` | 10 tests: `Profile` persistence and name rules; demo mode (bots join, bots buzz after arming, auto-play advances rounds and awards points, demo host plays with a real player); smoke test. Plus both package test targets via the scheme. |
 
 CI (`.github/workflows/ci.yml`) runs the package and app suites on every PR.
@@ -47,7 +45,7 @@ if you change those timings, re-check the shots.
 
 ## Manual: two or more physical devices
 
-Simulator↔simulator MultipeerConnectivity works intermittently and simulator↔device not at all;
+The simulator can't use peer-to-peer Wi-Fi, and simulator↔device play is unreliable;
 always verify transport changes on hardware.
 
 Setup
@@ -83,23 +81,21 @@ Setup
 
 Record results (date, devices, iOS versions, pass/fail notes) in the Stage 2 issue (#3).
 
-### Connectivity matrix — run with **each** transport
+### Connectivity matrix (Network.framework)
 
-Switch the transport in **Settings → Developer → Transport** (DEBUG builds from Xcode) on *every*
-phone; all phones in a game must use the same one. Host = phone A on home Wi-Fi throughout.
-For each row: does B see A's game, does B join, does a round work (arm → buzz → result)?
+Host = phone A on home Wi-Fi throughout. For each row: does B see A's game, does B join, does a
+round work (arm → buzz → result), and does the link survive 20–30 s idle gaps?
 
-| Row | Player B's setup | Network.framework (expected) | Multipeer (observed 2026-10-25) |
-|---|---|---|---|
-| N1 | Same Wi-Fi as A | Join + round work | Works |
-| N2 | A *different* Wi-Fi network | Join + round work (direct Wi-Fi) | Sees game, can't join |
-| N3 | Wi-Fi on but not joined to any network, mobile data **off** | Join + round work (direct Wi-Fi) | Sees game, can't join |
-| N4 | Wi-Fi on, not joined, mobile data **on** | Join + round work | Sees game, spinner, "Couldn't join" (iOS 26 MC bug) |
-| N5 | Wi-Fi switched off (Settings) | Can't join; hint shown | Sees game, spinner, "Couldn't join" |
+| Row | Player B's setup | Expected | Result 2026-10-25/27 (iPhone 14 host, iPhone 12 player, iOS 27) | Multipeer, for the record |
+|---|---|---|---|---|
+| N1 | Same Wi-Fi as A | Join + rounds work | ✅ pass | Worked |
+| N2 | A *different* Wi-Fi network | Join + rounds work (direct Wi-Fi) | ✅ pass | Saw game, couldn't join |
+| N3 | Wi-Fi on but not joined to any network, mobile data **off** | Join + rounds work (direct Wi-Fi) | ✅ pass | Saw game, couldn't join |
+| N4 | Wi-Fi on, not joined, mobile data **on** | Join + rounds work | ✅ pass: 66 s, 0 drops, 3/3 buzzes, idle gaps of 17 s and 28 s survived; RTT 4–25 ms busy, up to ~330 ms idle; `armed` reached the player 200–300 ms after idle gaps | Spinner, "Couldn't join" |
+| N5 | Wi-Fi switched off (Settings) | Can't join; hint shown | ✅ as expected | Spinner, "Couldn't join" |
 
-Also note for N2–N4: time from tapping the game to "You're in!", and whether buzz results feel
-instant. Record the filled-in matrix (device models, iOS versions) in issue #3. If Network.framework
-passes N1–N4, ADR 0007 is accepted and Multipeer is deleted.
+Re-run the matrix after any transport change. The first N4 run (before the fix) is the reference
+for "broken": see the debug-log section below.
 
 ### Stage 3 script — rounds (≥ 3 phones: host A, players B and C)
 

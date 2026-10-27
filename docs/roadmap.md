@@ -13,7 +13,7 @@ tests and docs → PR referencing the issue → merge → update status → clos
 |---|---|---|---|---|
 | 0 | Scaffold & plan tracking | [#1](https://github.com/upendrasharma44/quick_buzz/issues/1) | ✅ Done (2026-10-25) | — |
 | 1 | Domain core (engines, protocol, loopback) | [#2](https://github.com/upendrasharma44/quick_buzz/issues/2) | ✅ Done (2026-10-25) | — |
-| 2 | Discovery & lobby over Multipeer | [#3](https://github.com/upendrasharma44/quick_buzz/issues/3) | 🔧 Transport replaced (ADR 0007); awaiting device connectivity matrix | v0.2 (dev) |
+| 2 | Discovery & lobby (Network.framework) | [#3](https://github.com/upendrasharma44/quick_buzz/issues/3) | ✅ Device-verified (connectivity matrix N1–N5, 2026-10-27) | v0.2 (dev) |
 | 3 | Buzz rounds | [#4](https://github.com/upendrasharma44/quick_buzz/issues/4) | 🔧 Built; awaiting 3-phone test + App Store submission | **v1.0 free** |
 | 4 | Robustness & fairness polish | [#5](https://github.com/upendrasharma44/quick_buzz/issues/5) | ⬜ Not started | v1.x |
 | 5 | Plus tier (StoreKit 2, $0.99/yr) | [#6](https://github.com/upendrasharma44/quick_buzz/issues/6) | ⬜ Not started | v1.2 |
@@ -64,7 +64,7 @@ XcodeGen project (iOS 18, Swift 6 strict concurrency), local packages `BuzzCore`
 `HostEngine` (arbitration state machine) and `PlayerEngine`, 34 Swift Testing tests including a
 host + 2 players loopback round. No UI, no networking.
 
-### Stage 2 — Discovery & lobby over Multipeer 🔧
+### Stage 2 — Discovery & lobby ✅
 Built on 2026-10-25; the stage closes once the two-phone script in `docs/testing.md` passes.
 - `MultipeerTransport`: advertiser/browser/session, auto-accept up to 7 players, peer registry,
   arrival timestamps, version-mismatch detection. Verified against real MultipeerConnectivity by
@@ -79,8 +79,10 @@ Built on 2026-10-25; the stage closes once the two-phone script in `docs/testing
   (rename), keep-awake during games, DEBUG demo mode with simulated players.
 - Device test (2026-10-25): Multipeer only connected phones on the same Wi-Fi network; Bluetooth-only
   never works (MC dropped Bluetooth in iOS 11). Replaced by a Network.framework transport with direct
-  peer-to-peer Wi-Fi (ADR 0007, package `BuzzNetwork`); Multipeer kept for DEBUG A/B only.
-- Remaining: the connectivity matrix and two-phone script in `docs/testing.md` on hardware, results in #3.
+  peer-to-peer Wi-Fi (ADR 0007, package `BuzzNetwork`).
+- Debug logs from two phones found the last bug: the player stopped browsing on join, and iOS then
+  dropped the peer-to-peer link. Fixed (keep browsing on `awdl0`, 1 s heartbeat, buzz re-send);
+  the connectivity matrix N1–N5 passed on 2026-10-27, ADR 0007 accepted and Multipeer deleted.
 
 ### Stage 3 — Buzz rounds → v1.0 free release 🔧
 Built on 2026-10-25 (ranking stays host arrival order; ADR 0005 follows in Stage 4 by decision).

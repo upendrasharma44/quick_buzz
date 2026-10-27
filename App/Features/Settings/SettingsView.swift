@@ -10,9 +10,6 @@ struct SettingsView: View {
     @AppStorage(SoundPlayer.enabledKey) private var soundEnabled = true
     @AppStorage(Diagnostics.enabledKey) private var debugLogEnabled = Diagnostics.defaultEnabled
     @State private var debugLogSize = 0
-    #if DEBUG
-    @AppStorage(TransportKind.key) private var transport = TransportKind.network.rawValue
-    #endif
 
     var body: some View {
         NavigationStack {
@@ -56,17 +53,6 @@ struct SettingsView: View {
                 } footer: {
                     Text("Records what the game does on this phone (connections, messages, timings) to a file that stays on the phone until you share it. Turn it on before reproducing a problem.")
                 }
-                #if DEBUG
-                Section {
-                    Picker("Transport", selection: $transport) {
-                        ForEach(TransportKind.allCases) { Text($0.label).tag($0.rawValue) }
-                    }
-                } header: {
-                    Text("Developer")
-                } footer: {
-                    Text("DEBUG builds only. Applies to the next game. Every phone in a game must use the same transport.")
-                }
-                #endif
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)

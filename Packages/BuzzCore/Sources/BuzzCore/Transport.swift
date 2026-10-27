@@ -57,7 +57,7 @@ public enum TransportEvent: Sendable {
 }
 
 /// The only thing the engines know about networking. Implementations:
-/// `LoopbackTransport` (in-process, tests/previews), `MultipeerTransport` (BuzzMultipeer),
+/// `LoopbackTransport` (in-process, tests/previews), `NetworkTransport` (BuzzNetwork),
 /// and later an internet relay (BuzzRelay).
 ///
 /// A transport instance serves one game session: create it, use it, `stop()` it, discard it.

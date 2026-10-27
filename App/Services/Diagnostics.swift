@@ -54,8 +54,7 @@ enum Diagnostics {
     static func logHeader(profile: Profile, reason: String) {
         debugLog(.app, """
             ==== BuzzLight \(Bundle.main.appVersion) (\(reason)) · \(deviceModel) iOS \(UIDevice.current.systemVersion) \
-            · player \(profile.name.isEmpty ? "(no name yet)" : profile.name) \(profile.playerID.short) \
-            · transport \(TransportKind.current().rawValue) ====
+            · player \(profile.name.isEmpty ? "(no name yet)" : profile.name) \(profile.playerID.short) ====
             """)
     }
 

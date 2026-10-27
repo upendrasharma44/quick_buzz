@@ -19,7 +19,7 @@ holder (App Store Connect / Xcode signed in as the developer); everything else c
 1. **Version.** In `project.yml` set `MARKETING_VERSION` (e.g. `1.0.0`) and increase
    `CURRENT_PROJECT_VERSION` (every upload needs a new build number). `xcodegen generate`.
 2. **Green build.** CI green on `main`; locally:
-   `swift test --package-path Packages/BuzzCore`, `swift test --package-path Packages/BuzzMultipeer`,
+   `swift test --package-path Packages/BuzzCore`, `swift test --package-path Packages/BuzzNetwork`,
    `xcodebuild test -project BuzzLight.xcodeproj -scheme BuzzLight -destination 'platform=iOS Simulator,name=iPhone 17'`.
 3. **Screenshots** (when UI changed): `scripts/screenshots.sh` → `docs/app-store/screenshots/`.
    Check them, commit.

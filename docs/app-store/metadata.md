@@ -44,8 +44,6 @@ HOW IT WORKS
 NO ACCOUNTS, NO INTERNET, NO ADS
 • Every phone just needs Wi-Fi switched on — on the same network, or connected directly phone to
   phone where there's no network to share.
-  <!-- Keep the second half only once connectivity matrix rows N2–N3 (docs/testing.md) pass on
-       devices with the Network.framework transport; otherwise say "on the same Wi-Fi network". -->
 • No sign-up and no data collected. Nothing leaves the room.
 • Up to 8 phones in a game: one host and seven players.
 
@@ -75,7 +73,7 @@ early-press lockout, points and final scores.
 ## Export compliance
 
 `ITSAppUsesNonExemptEncryption = NO` is set in Info.plist. The app uses only encryption built into
-iOS (MultipeerConnectivity session encryption), which is exempt. Answer accordingly if asked.
+iOS (TLS via Network.framework), which is exempt. Answer accordingly if asked.
 
 ## Screenshots (6.9" iPhone, 1320 × 2868)
 

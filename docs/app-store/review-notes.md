@@ -6,7 +6,8 @@ Paste into App Store Connect → App Review Information → Notes.
 
 BuzzLight is a buzzer for in-person quiz games. It has no accounts, no server and no in-app
 purchases. A game needs **at least two iOS devices** near each other with **Wi-Fi switched on**.
-The simplest setup is both devices on the same Wi-Fi network. There is no demo account because there
+The simplest setup is both devices on the same Wi-Fi network; they can also connect directly with
+no shared network, as long as Wi-Fi is switched on. There is no demo account because there
 is nothing to sign in to.
 
 To test:
