@@ -8,17 +8,18 @@ lifecycle, runs in pure Swift packages; the app target contains SwiftUI views an
 
 ```
 ┌──────────────────────────── App (SwiftUI, iOS 18) ─────────────────────────────┐
-│ Onboarding · Home · Lobby (Host/Join flows) · Settings · Shared                │
-│ Services: Profile (name + PlayerID) · AppServices (transport factory) · DemoHub │
+│ Onboarding · Home · Lobby (Host/Join flows) · Round · Settings · Shared        │
+│ Services: Profile · AppServices (transport factory, TransportKind) · Sound · Demo │
 └───────────────┬───────────────────────────────────┬────────────────────────────┘
                 │ makeTransport()                   │ HostSession / PlayerSession
-     ┌──────────▼──────────┐              ┌─────────▼──────────────┐
-     │ BuzzMultipeer       │              │ BuzzCore               │
-     │ MultipeerTransport  │── conforms ─▶│ GameTransport          │
-     │ PeerRegistry        │    to        │ HostSession  PlayerSession │
-     │ DiscoveryInfo       │              │ HostEngine   PlayerEngine  │
-     └─────────────────────┘              │ GameMessage/Codec · Models │
-                                          │ LoopbackTransport/Network  │
+     ┌──────────▼──────────┐              ┌─────────▼──────────────────┐
+     │ BuzzNetwork         │              │ BuzzCore                   │
+     │ NetworkTransport    │── conforms ─▶│ GameTransport              │
+     │ (Network.framework) │    to        │ HostSession  PlayerSession │
+     ├─────────────────────┤              │ HostEngine   PlayerEngine  │
+     │ BuzzMultipeer       │── conforms ─▶│ GameMessage/Codec · Models │
+     │ (legacy, DEBUG A/B) │              │ PeerRegistry · DiscoveryInfo│
+     └─────────────────────┘              │ LoopbackTransport/Network  │
      later: BuzzRelay (internet),         └────────────────────────────┘
             BuzzStore (StoreKit 2), BuzzCloud (Firebase)
 ```
@@ -26,12 +27,13 @@ lifecycle, runs in pure Swift packages; the app target contains SwiftUI views an
 | Module | Depends on | Responsibility |
 |---|---|---|
 | `BuzzCore` | Foundation, Observation, os | Models, wire protocol, `GameTransport` contract, host/player engines, **host/player sessions** (connection lifecycle), in-process loopback transport. No UIKit, no networking framework. |
-| `BuzzMultipeer` | BuzzCore, MultipeerConnectivity | `MultipeerTransport`: discovery and messaging over Wi-Fi / peer-to-peer Wi-Fi / Bluetooth. |
-| `App` | BuzzCore, BuzzMultipeer | Views and navigation; `Profile` persistence; `AppServices.makeTransport` (Multipeer, or loopback in demo mode); DEBUG demo mode. |
+| `BuzzNetwork` | BuzzCore, Network, CryptoKit | `NetworkTransport` (ADR 0007): Bonjour discovery, one TLS-PSK WebSocket connection per player, peer-to-peer Wi-Fi allowed. **The transport every release build uses.** |
+| `BuzzMultipeer` | BuzzCore, MultipeerConnectivity | Legacy `MultipeerTransport`, DEBUG A/B only; deleted once ADR 0007 is accepted. Only connects phones on the same Wi-Fi network on current iOS. |
+| `App` | BuzzCore, BuzzNetwork, BuzzMultipeer | Views and navigation; `Profile` persistence; `AppServices.makeTransport` (`TransportKind`: Network.framework, DEBUG-switchable to Multipeer; loopback in demo mode); DEBUG demo mode. |
 
 Decisions are recorded in `docs/adr/` (session layer and connection lifecycle: ADR 0004;
 proposed Stage 4 ranking by clock-offset-corrected press timestamps: ADR 0005;
-rename from QuickBuzz to BuzzLight: ADR 0006).
+rename from QuickBuzz to BuzzLight: ADR 0006; Network.framework replaces Multipeer: ADR 0007).
 
 ## Layers and data flow
 
@@ -129,7 +131,9 @@ background and resumes it by itself, and players reconnect on their own.
  ended(reason) ◀── leave() · kick · host `end` · version mismatch ─────┴─▶ ended(.connectionLost)
 ```
 
-- `joined` stops browsing (saves radio time). On a drop, `reconnecting` clears the (stale) host
+- `joined` asks the transport to stop browsing. `NetworkTransport` only does so over
+  infrastructure Wi-Fi: on a peer-to-peer link (`awdl0`) the browse is what keeps iOS from tearing
+  the link down (ADR 0007, device findings). On a drop, `reconnecting` clears the (stale) host
   list, starts browsing again and asks the transport to connect right away; the transport holds the
   invitation until the host is found. It is re-requested whenever the host is re-found and after
   each failure (`retryDelay`, 1 s).
@@ -139,6 +143,15 @@ background and resumes it by itself, and players reconnect on their own.
   `sceneDidBecomeActive()` starts a fresh one and retries immediately. (`Task.sleep` keeps counting
   while the app is suspended, so without this a player who glanced at another app for 30 s would be
   sent home the moment they returned.)
+- **Liveness:** the host pings every player each second (`ping`/`pong`, protocol v1). A player
+  not heard from for 12 s is dropped by the host; a player that hears nothing from the host for
+  10 s drops the link itself (`GameTransport.disconnect(_:)`) and reconnects. Both sides decide
+  from the same silence, so neither keeps sending into a link only it believes in. Pings and pongs
+  are kept out of the debug log, apart from round-trip summaries (`host rtt …` every 10 samples, and
+  spikes over 500 ms).
+- **Buzz re-send:** `PlayerEngine.unconfirmedBuzz` remembers a buzz until the host ranks it. If the
+  reconnect's `welcome` shows that round still open without this player, the buzz is sent again:
+  delivered late, ranked by its (late) arrival, rather than lost.
 - A player addresses everything to the host, whatever the engine's recipients say: the session
   mesh also links players to each other (see below). Frames and version errors from peers other
   than the host are ignored.
@@ -153,18 +166,40 @@ var localPeer: PeerID
 var events: AsyncStream<TransportEvent>   // finishes after stop()
 func startHosting(sessionName:)           // no-op while advertising
 func startBrowsing() / stopBrowsing()     // no-op while browsing; restart after stop re-reports hosts
-func connect(to:)                         // requires browsing; waits for discovery; result via
+func connect(to:)                         // to a host this transport has discovered; result via
                                           // .peerConnected (immediate if already connected) / .failed(.connectionFailed)
-func send(_:to:) / broadcast(_:) / stop() // stop is idempotent
+func send(_:to:) / broadcast(_:)
+func disconnect(_ peer:)                  // drop one link (silence); emits .peerDisconnected
+func stop()                               // idempotent
 ```
 
 `TransportEvent`: `hostFound`, `hostLost`, `peerConnected`, `peerDisconnected`,
 `message(_, from:, receivedAt:)`, `failed(TransportError)`.
 `TransportError`: `notConnected`, `peerUnknown`, `connectionFailed`, `incompatibleVersion(_, from:)`, `underlying`.
 
-### `MultipeerTransport`
+### `NetworkTransport`
 
-- Service type `buzzlight` (`NSBonjourServices`: `_buzzlight._tcp`, `_buzzlight._udp`).
+| Concern | How |
+|---|---|
+| Discovery | Host: `NWListener` with Bonjour service `_buzzlight._tcp` (instance name = session name ≤ 63 bytes) and TXT `session`, `v` (`DiscoveryInfo`). Players: `NWBrowser(.bonjourWithTXTRecord)`; added/changed results → `.hostFound` (with `isCompatible` from `v`), removed → `.hostLost`. |
+| Identity | Hosts are keyed by their Bonjour endpoint (`PeerRegistry`), so the same host keeps the same `PeerID` across browser restarts and reconnects. The host mints a new `PeerID` per incoming connection; `hello` maps it to the player. |
+| Connections | Player: one `NWConnection` to the host's endpoint (no need for the current browse to have found it). Host: one per player from `newConnectionHandler`; over `SessionLimits.maxPlayers` (pending included) the connection is started and closed at once. |
+| Stack | WebSocket (binary, one `GameMessageCodec` envelope per message) over TLS-PSK over TCP with `noDelay` and keepalive; `includePeerToPeer = true` everywhere (`NetworkParameters`). |
+| Lifecycle | `.ready` → `.peerConnected`; `.failed`/`.cancelled` → `.peerDisconnected` (or `.failed(.connectionFailed)` for a player's attempt that never became ready). `.waiting` is not fatal; attempts not ready within 18 s (`connectionExpiry`) are abandoned, and half-open incoming handshakes free their slot. A WebSocket close frame or end of stream cancels the connection at once (otherwise the receive loop spins until keepalive, ~7 s). |
+| Version gate | Players grey out hosts whose `v` differs; the host closes any connection whose frame has another version and reports `.failed(.incompatibleVersion(_, from:))`. |
+| Threading | Network.framework calls back on one private serial queue; all state is guarded by one lock, events are yielded under it, and no framework call is made while holding it. Callbacks from a replaced listener/browser/connection are ignored; after `stop()` nothing is emitted. |
+
+Known limitation: a phone joining a full game only hears "Couldn't join" after the 18 s expiry
+(Stage 4: advertise the player count in TXT).
+
+### `MultipeerTransport` (legacy)
+
+Kept only for DEBUG A/B device tests until ADR 0007 is accepted. Its service type is now
+`buzzlight-mc` (`_buzzlight-mc._tcp/_udp`) so it never sees `NetworkTransport` games.
+On current iOS it only connected phones on the same Wi-Fi network, and it has not used Bluetooth
+since iOS 11; that is why it is being replaced.
+
+
 - Discovery info: `session` = session name (≤ 120 bytes), `v` = protocol version → `DiscoveredHost.isCompatible`.
 - `MCPeerID.displayName` = the user's name, trimmed, ≤ 63 UTF-8 bytes, `"Player"` if empty.
 - Encryption `.required`; data sent `.reliable` as `GameMessageCodec` JSON.
@@ -197,7 +232,7 @@ In-process routing through a `LoopbackNetwork` actor, used by tests, previews an
 | Piece | Role |
 |---|---|
 | `Profile` | `@Observable`; `PlayerID` (created once) and display name (trimmed, whitespace collapsed, ≤ 24 chars) in `UserDefaults` keys `profile.playerID` / `profile.name`. |
-| `AppServices` | Injected via environment. `makeTransport(name)` returns a `MultipeerTransport`, or a loopback transport in demo mode. |
+| `AppServices` | Injected via environment. `makeTransport(name)` returns a `NetworkTransport` (or, in DEBUG with `TransportKind.multipeer`, a `MultipeerTransport`), or a loopback transport in demo mode. The kind is read per game. |
 | `RootView` | `NameEntryView` until a name exists, then `HomeView`. |
 | `HostFlowView` / `JoinFlowView` | Create the session in `.task`, end/leave on exit, keep the screen awake. `JoinFlowView` forwards `scenePhase` `.background`/`.active` to the session. Back button hidden: exit goes through End/Leave so the session is always closed. |
 | `JoinBrowserView` rows | Hosts on another protocol version are shown disabled with "Needs the same BuzzLight version". |
@@ -208,6 +243,7 @@ In-process routing through a `LoopbackNetwork` actor, used by tests, previews an
 | `ResultsSection` / `ScoreboardSection` | Shared list sections: ranking ("First!" / "+Δ ms", lockout line, optional ±1) and standings (shared positions, departed players dimmed, optional ±1 and kick). |
 | `EndOfGameView` / `SessionEndedView` | Final standings and a way home: host after End, player after any end reason. |
 | `SoundPlayer` | `AVAudioPlayer` primed ahead of time, `.ambient` session (mixes, respects the silent switch); muted by Settings → Sound effects (`settings.sound`). The WAV is generated by `design/sound/make-sounds.py`. |
+| `Diagnostics` | Debug log switch (Settings → Diagnostics, `-BLDebugLog YES`), per-launch header, shareable export (`DebugLogFile`). `DebugLog` itself lives in BuzzCore so sessions and transports can log; it costs one flag check when off. Fetch with `scripts/fetch-logs.sh` (see `docs/testing.md` → Debug log). |
 | `DemoHub` | DEBUG demo mode (`-BLDemo YES`): loopback network; a joinable "Quiz Night (demo)" game that runs rounds by itself once a real player joins; bots that join the user's game and buzz 0.25–1.2 s after arming (sometimes too early). `-BLDemoAutoPlay` self-plays the user's own game, `-BLDemoAutoBuzz fast\|early` presses the user's buzzer. Timings are injectable (`DemoHub.Timing`) for tests. |
 
 ## Concurrency model

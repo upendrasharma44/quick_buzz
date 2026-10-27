@@ -1,5 +1,6 @@
 import BuzzCore
 import BuzzMultipeer
+import BuzzNetwork
 import Foundation
 import Observation
 
@@ -29,15 +30,55 @@ final class AppServices {
             return AppServices(makeTransport: { await demo.network.makeTransport(name: $0) }, demo: demo)
         }
         #endif
-        return AppServices(makeTransport: { MultipeerTransport(displayName: $0) })
+        // Read per game, so a DEBUG Settings change applies to the next game without relaunching.
+        return AppServices(makeTransport: { name in
+            let kind = TransportKind.current(defaults)
+            debugLog(.app, "new game transport: \(kind.rawValue)")
+            return kind.make(displayName: name)
+        })
+    }
+}
+
+/// Which real transport a game uses (ADR 0007). Release builds always use Network.framework;
+/// DEBUG builds can switch to Multipeer for A/B device tests (Settings → Developer, or
+/// `-BLTransport multipeer`). Both sides of a game must use the same transport.
+enum TransportKind: String, CaseIterable, Identifiable {
+    case network
+    case multipeer
+
+    static let key = "BLTransport"
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .network: "Network.framework"
+        case .multipeer: "Multipeer (old)"
+        }
+    }
+
+    static func current(_ defaults: UserDefaults = .standard) -> TransportKind {
+        #if DEBUG
+        return defaults.string(forKey: key).flatMap(TransportKind.init) ?? .network
+        #else
+        return .network
+        #endif
+    }
+
+    @MainActor
+    func make(displayName: String) -> any GameTransport {
+        switch self {
+        case .network: NetworkTransport(displayName: displayName)
+        case .multipeer: MultipeerTransport(displayName: displayName)
+        }
     }
 }
 
 /// DEBUG launch arguments, read from the `UserDefaults` argument domain (e.g. `-BLDemo YES`).
 enum LaunchOption {
-    /// Use an in-process loopback network with simulated players instead of Multipeer.
+    /// Use an in-process loopback network with simulated players instead of a real transport.
     static let demo = "BLDemo"
-    /// Open straight into a flow: `host`, `join`, or `join-first` (join the first game found).
+    /// Open straight into a flow: `host`, `join`, `join-first` (join the first game found), or `settings`.
     static let route = "BLRoute"
     /// With `BLDemo`: your own hosted game also runs rounds by itself (arm, award winner, reset).
     static let demoAutoPlay = "BLDemoAutoPlay"

@@ -13,8 +13,8 @@ struct MultipeerTransportTests {
         #expect(type.allSatisfy { $0.isLowercase || $0.isNumber || $0 == "-" })
     }
 
-    @Test func sessionHoldsSevenPlayersPlusHost() {
-        #expect(MultipeerTransport.maxPlayers == 7)
+    @Test func sessionCapacityMatchesTheGameLimit() {
+        #expect(MultipeerTransport.maxPlayers == SessionLimits.maxPlayers)
     }
 
     @Test func invitationTimesOutBeforeThePlayerSessionDoes() {
@@ -57,49 +57,20 @@ struct MultipeerTransportTests {
     }
 }
 
-@Suite("Peer helpers")
+@Suite("Multipeer helpers")
 struct PeerSupportTests {
-    @Test func registryKeepsSameNamedPeersDistinct() {
+    @Test func registryKeepsSameNamedMCPeersDistinct() {
         var registry = PeerRegistry<MCPeerID>()
         let a = MCPeerID(displayName: "Sam")
         let b = MCPeerID(displayName: "Sam")
         let idA = registry.peerID(for: a, displayName: a.displayName)
         let idB = registry.peerID(for: b, displayName: b.displayName)
         #expect(idA != idB)
-        #expect(registry.peerID(for: a, displayName: "renamed") == idA, "stable once minted")
         #expect(registry.key(for: idA) == a)
         #expect(registry.key(for: idB) == b)
-        #expect(registry.key(for: PeerID(rawValue: "nope")) == nil)
     }
 
-    @Test func displayNameIsSanitized() {
-        #expect(PeerName.sanitized("  Ann  ") == "Ann")
-        #expect(PeerName.sanitized("") == "Player")
-        #expect(PeerName.sanitized(" \n ") == "Player")
-        let long = PeerName.sanitized(String(repeating: "é", count: 60))  // 2 bytes each
-        #expect(long.utf8.count <= PeerName.maxDisplayNameBytes)
-        #expect(long.count == 31)
-    }
-
-    @Test func truncationNeverSplitsCharacters() {
-        let flags = String(repeating: "🇮🇳", count: 10)  // 8 bytes per flag
-        let cut = PeerName.truncated(flags, maxBytes: 20)
-        #expect(cut == "🇮🇳🇮🇳")
-    }
-
-    @Test func discoveryInfoRoundTrip() {
-        let info = DiscoveryInfo.make(sessionName: "Quiz night")
-        #expect(info[DiscoveryInfo.sessionNameKey] == "Quiz night")
-        #expect(info[DiscoveryInfo.versionKey] == String(Envelope.currentVersion))
-        #expect(DiscoveryInfo.sessionName(from: info, fallback: "x") == "Quiz night")
-        #expect(DiscoveryInfo.sessionName(from: nil, fallback: "Bob's iPhone") == "Bob's iPhone")
-        #expect(DiscoveryInfo.sessionName(from: [DiscoveryInfo.sessionNameKey: ""], fallback: "fb") == "fb")
-    }
-
-    @Test func versionCompatibility() {
-        #expect(DiscoveryInfo.isCompatible(DiscoveryInfo.make(sessionName: "g")))
-        #expect(DiscoveryInfo.isCompatible(nil), "unversioned hosts are given the benefit of the doubt")
-        #expect(!DiscoveryInfo.isCompatible([DiscoveryInfo.versionKey: "999"]))
+    @Test func invitationContextCarriesTheVersion() {
         #expect(InvitationContext.isCompatible(InvitationContext.current))
         #expect(!InvitationContext.isCompatible(nil))
         #expect(!InvitationContext.isCompatible(Data("v=999".utf8)))
@@ -108,12 +79,5 @@ struct PeerSupportTests {
     @Test func pendingInvitationsExpireBeforeThePlayerGivesUp() {
         #expect(MultipeerTransport.invitationExpiry > .seconds(MultipeerTransport.invitationTimeout))
         #expect(MultipeerTransport.invitationExpiry < .seconds(20))
-    }
-
-    @Test func discoveryInfoFitsBonjourLimits() {
-        let info = DiscoveryInfo.make(sessionName: String(repeating: "W", count: 1_000))
-        for (key, value) in info {
-            #expect("\(key)=\(value)".utf8.count <= 255)
-        }
     }
 }

@@ -8,7 +8,10 @@ device ranks who buzzed first. Staged delivery; see `docs/roadmap.md` for the pl
 ```sh
 xcodegen generate                                   # regenerate BuzzLight.xcodeproj (git-ignored)
 swift test --package-path Packages/BuzzCore         # fast, pure-Swift domain + session tests (run these first)
-swift test --package-path Packages/BuzzMultipeer
+swift test --package-path Packages/BuzzNetwork
+swift test --package-path Packages/BuzzMultipeer      # legacy transport (DEBUG A/B only)
+BUZZLIGHT_LIVE_NETWORK=1 swift test --package-path Packages/BuzzNetwork       # real Network.framework on this Mac
+scripts/fetch-logs.sh                               # pull + merge debug logs from paired iPhones (logs/)
 BUZZLIGHT_LIVE_MULTIPEER=1 swift test --package-path Packages/BuzzMultipeer   # real Multipeer on this Mac
 xcodebuild test -project BuzzLight.xcodeproj -scheme BuzzLight \
   -destination 'platform=iOS Simulator,name=iPhone 17' -quiet   # app + all package tests
@@ -26,7 +29,8 @@ players), optionally `-BLRoute host|join|join-first` and `-profile.name <name>`.
   `Profile`, `AppServices`, `SoundPlayer`, `DemoHub`. No game logic.
 - `Packages/BuzzCore` — models, wire protocol, `GameTransport`, `HostEngine`, `PlayerEngine`,
   `HostSession`/`PlayerSession` (connection lifecycle), `LoopbackTransport`. No UIKit.
-- `Packages/BuzzMultipeer` — `MultipeerTransport` (MultipeerConnectivity → `GameTransport`).
+- `Packages/BuzzNetwork` — `NetworkTransport` (Network.framework → `GameTransport`; ADR 0007). The real transport.
+- `Packages/BuzzMultipeer` — legacy `MultipeerTransport`, DEBUG A/B only; delete when ADR 0007 is accepted.
 - `Config/` — xcconfig files; `Local.xcconfig` is per-machine and git-ignored.
 - `docs/` — roadmap, architecture, protocol, testing, ADRs. **Docs are part of every change.**
 - `design/icon/` — app icon source. Edit colours/shapes in `make-icon.sh` and re-run it
@@ -34,6 +38,7 @@ players), optionally `-BLRoute host|join|join-first` and `-profile.name <name>`.
   Never hand-edit the PNGs.
 - `design/sound/make-sounds.py` — generates `App/Resources/Sounds/buzz.wav` (stdlib Python). Never hand-edit the WAV.
 - `scripts/screenshots.sh` — App Store screenshots from demo mode; output in `docs/app-store/screenshots/`.
+- `scripts/fetch-logs.sh` — fetch debug logs from paired phones and merge them into one timeline.
 - `docs/app-store/`, `docs/release.md` — store metadata, review notes, privacy policy, release checklist.
 
 ## Mandatory rules
@@ -52,6 +57,22 @@ players), optionally `-BLRoute host|join|join-first` and `-profile.name <name>`.
 7. Work on a branch per stage (`stage-N-<slug>`), open a PR, and link the stage issue.
 
 ## Known pitfalls
+
+- Device problems are debugged from logs, not guesses: phones record with Settings → Diagnostics (or
+  `-BLDebugLog YES`), `scripts/fetch-logs.sh` pulls them. When adding session or transport behaviour,
+  add `debugLog(.session/.transport, …)` lines for its decisions and failures.
+
+- Phones need **Wi-Fi switched on**; a shared network isn't required with `NetworkTransport`
+  (`includePeerToPeer`). Nothing in the app may claim Bluetooth play: MultipeerConnectivity hasn't used
+  Bluetooth since iOS 11, and Network.framework doesn't either.
+- `NetworkTransport` receive loop: a WebSocket close frame or `context.isFinal` must cancel the connection;
+  otherwise `receiveMessage` completes empty forever and disconnects surface only via keepalive (~7 s).
+  Live test `discoverConnectExchangeAndDisconnect` asserts < 3 s.
+- Peer-to-peer Wi-Fi (`awdl0`) stays up on a phone only while it browses or advertises: never stop
+  the player's browser while its connection is over `awdl*` (`NetworkTransport.stopBrowsing` checks).
+  Don't make TCP keepalive aggressive; liveness is the sessions' 1 s heartbeat (10–12 s silence).
+- `NetworkTransport` and `MultipeerTransport` use different Bonjour types (`_buzzlight._tcp` vs
+  `_buzzlight-mc._tcp`); every phone in a game must use the same transport (DEBUG Settings → Developer).
 
 - The buzzer must act on **touch-down** and call `PlayerSession.buzz()` synchronously in the gesture
   callback (no `Task`/`await` first); sound and anything else come after. ADR 0005 will stamp the press

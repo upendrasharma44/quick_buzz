@@ -81,6 +81,9 @@ public protocol GameTransport: AnyObject, Sendable {
     func connect(to host: PeerID) async throws
     func send(_ message: GameMessage, to peers: [PeerID]) async throws
     func broadcast(_ message: GameMessage) async throws
+    /// Drop the link to one peer (e.g. it went silent). Emits `.peerDisconnected(peer)` if it was
+    /// connected; unknown peers are ignored.
+    func disconnect(_ peer: PeerID) async
     /// Stop advertising/browsing, drop every connection and finish `events`. Idempotent.
     func stop() async
 }

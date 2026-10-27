@@ -133,6 +133,10 @@ public final class LoopbackTransport: GameTransport, @unchecked Sendable {
         await network.broadcast(message, from: localPeer)
     }
 
+    public func disconnect(_ peer: PeerID) async {
+        await network.dropLink(between: localPeer, and: peer)
+    }
+
     public func stop() async {
         let first = lock.withLock {
             defer { _isStopped = true; _isBrowsing = false }

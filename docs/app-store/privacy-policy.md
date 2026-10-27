@@ -17,8 +17,17 @@ accounts, no analytics, no advertising and no third-party SDKs.
 | A random player identifier | Created on your device and sent to the other phones in your game, so a player who briefly disconnects keeps their score. | On your device until you delete the app. On other phones only for that game. |
 | Buzzes, rankings and scores | Exchanged between the phones in the game. | In memory for that game only; nothing is saved after it ends. |
 
-All of this travels directly between nearby devices using Apple's MultipeerConnectivity (Wi-Fi or
-Bluetooth), encrypted by iOS. None of it is sent to the developer or to any server.
+All of this travels directly between nearby devices over Wi-Fi (your local network, or a direct
+phone-to-phone Wi-Fi link) using Apple's Network framework, encrypted with TLS. None of it is sent
+to the developer or to any server.
+
+## Diagnostic log
+
+Settings → Diagnostics → Record debug log is off unless you turn it on (it is only on by default in
+development builds used for testing, which are not distributed through the App Store). When on, the app writes a log
+of what the game does (connections, messages, timings, display names in the game) to a file **on your
+phone**. It is never sent anywhere automatically; it only leaves the phone if you choose Share debug
+log and send it to someone. You can clear it at any time in the same place.
 
 ## Local Network permission
 

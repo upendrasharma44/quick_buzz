@@ -9,7 +9,7 @@ struct HomeView: View {
 
     @Environment(Profile.self) private var profile
     @State private var path: [Route] = Self.launchRoute()
-    @State private var showingSettings = false
+    @State private var showingSettings = Self.launchOpensSettings()
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -59,6 +59,15 @@ struct HomeView: View {
     }
 
     private func goHome() { path.removeAll() }
+
+    /// DEBUG: `-BLRoute settings` opens the Settings sheet at launch.
+    private static func launchOpensSettings() -> Bool {
+        #if DEBUG
+        UserDefaults.standard.string(forKey: LaunchOption.route) == "settings"
+        #else
+        false
+        #endif
+    }
 
     /// DEBUG: `-BLRoute host|join|join-first` opens straight into a flow (for demos/screenshots).
     private static func launchRoute() -> [Route] {

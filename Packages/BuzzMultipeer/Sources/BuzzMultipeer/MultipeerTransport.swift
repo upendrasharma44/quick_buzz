@@ -2,8 +2,9 @@ import BuzzCore
 import Foundation
 @preconcurrency import MultipeerConnectivity
 
-/// `GameTransport` over Apple's MultipeerConnectivity (infrastructure Wi-Fi, peer-to-peer Wi-Fi
-/// and Bluetooth). Star topology: the host advertises and accepts invitations; players browse and
+/// `GameTransport` over Apple's MultipeerConnectivity. **Legacy**: replaced by `NetworkTransport`
+/// (ADR 0007) and kept only for DEBUG A/B device tests. In practice MC needs every phone on the same
+/// Wi-Fi network on current iOS; it has not used Bluetooth since iOS 11. Star topology: the host advertises and accepts invitations; players browse and
 /// invite the host. See docs/architecture.md and ADRs 0001 and 0004.
 ///
 /// Threading: MultipeerConnectivity calls the delegate methods on its own private queues. All
@@ -19,10 +20,12 @@ import Foundation
 /// - A session links all of its members to each other, not just to the host, so a player is also
 ///   connected to the other players. Sessions address players' messages to the host explicitly.
 public final class MultipeerTransport: NSObject, GameTransport, @unchecked Sendable {
-    /// Must match `NSBonjourServices` in the app's Info.plist (`_buzzlight._tcp` / `_buzzlight._udp`).
-    public static let serviceType = "buzzlight"
-    /// An `MCSession` holds at most 8 peers including the host.
-    public static let maxPlayers = kMCSessionMaximumNumberOfPeers - 1
+    /// Must match `NSBonjourServices` in the app's Info.plist (`_buzzlight-mc._tcp` / `_buzzlight-mc._udp`).
+    /// Kept apart from `NetworkTransport`'s `_buzzlight._tcp` so the two never discover each other
+    /// while both exist for A/B testing (ADR 0007); Multipeer is removed once the switch is verified.
+    public static let serviceType = "buzzlight-mc"
+    /// The game limit; it also fits an `MCSession` (8 peers including the host).
+    public static let maxPlayers = min(SessionLimits.maxPlayers, kMCSessionMaximumNumberOfPeers - 1)
     /// How long a player's invitation waits for the host before MultipeerConnectivity gives up.
     public static let invitationTimeout: TimeInterval = 15
     /// When a pending invitation is declared failed if MultipeerConnectivity never reports back.
@@ -154,6 +157,14 @@ public final class MultipeerTransport: NSObject, GameTransport, @unchecked Senda
         try transmit(message, to: targets)
     }
 
+    /// MultipeerConnectivity can't drop one peer. A player's only link is the host, so a player
+    /// drops the whole session; on the host this is a no-op (legacy transport, ADR 0007).
+    public func disconnect(_ peer: PeerID) async {
+        let isPlayer = lock.withLock { advertiser == nil && !stopped }
+        debugLog(.transport, "mc disconnect \(peer) requested\(isPlayer ? "" : " (ignored on host)")")
+        if isPlayer { session.disconnect() }
+    }
+
     public func stop() async {
         let parts = lock.withLock { () -> (MCNearbyServiceAdvertiser?, MCNearbyServiceBrowser?)? in
             guard !stopped else { return nil }
@@ -174,6 +185,7 @@ public final class MultipeerTransport: NSObject, GameTransport, @unchecked Senda
     // MARK: - Private
 
     private func invite(_ mcPeer: MCPeerID, via browser: MCNearbyServiceBrowser, token: UUID) {
+        debugLog(.transport, "mc invite → \(mcPeer.displayName)")
         browser.invitePeer(mcPeer, to: session, withContext: InvitationContext.current, timeout: Self.invitationTimeout)
         scheduleExpiry(of: mcPeer, token: token)
     }
@@ -202,6 +214,7 @@ public final class MultipeerTransport: NSObject, GameTransport, @unchecked Senda
         do {
             try session.send(data, toPeers: targets, with: .reliable)
         } catch {
+            debugLog(.transport, "mc send FAILED \(message.summary): \(error)")
             throw TransportError.underlying(error.localizedDescription)
         }
     }
@@ -231,6 +244,7 @@ enum InvitationContext {
 
 extension MultipeerTransport: MCSessionDelegate {
     public func session(_ session: MCSession, peer peerID: MCPeerID, didChange state: MCSessionState) {
+        debugLog(.transport, "mc \(peerID.displayName) state \(state.rawValue) (0 notConnected, 1 connecting, 2 connected)")
         emit(for: peerID) { peer in
             switch state {
             case .connected:
@@ -291,6 +305,7 @@ extension MultipeerTransport: MCNearbyServiceAdvertiserDelegate {
         withContext context: Data?,
         invitationHandler: @escaping (Bool, MCSession?) -> Void
     ) {
+        defer { debugLog(.transport, "mc invitation from \(peerID.displayName)") }
         let accept = lock.withLock { () -> Bool in
             guard !stopped, InvitationContext.isCompatible(context) else { return false }
             if connected.contains(peerID) || acceptedPending.contains(peerID) { return true }

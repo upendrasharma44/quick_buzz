@@ -20,23 +20,27 @@ Every frame is one JSON object produced by `GameMessageCodec`:
 - Keys are sorted for stable output. Messages are small (< 2 KB); Multipeer sends them as
   `.reliable` data frames.
 
-## Discovery (MultipeerConnectivity)
+## Discovery and transport (Network.framework, ADR 0007)
 
-Before any frame is exchanged, players find hosts through Bonjour via MultipeerConnectivity:
+Before any frame is exchanged, players find hosts through Bonjour:
 
 | Item | Value |
 |---|---|
-| Service type | `buzzlight` (Info.plist `NSBonjourServices`: `_buzzlight._tcp`, `_buzzlight._udp`) |
-| Who advertises | Host only. Players browse and send the invitation; the host auto-accepts up to 7 players. |
-| Discovery info | `session` → session name shown in the Join list (≤ 120 bytes, default "<name>'s game"); `v` → `Envelope.currentVersion` |
-| Invitation context | UTF-8 `v=<Envelope.currentVersion>`. The host declines invitations whose context differs, so a mismatched phone never enters the session. |
-| Topology | Logically a star (players talk to the host only), but MultipeerConnectivity links every session member to every other; players must address the host explicitly. |
-| Peer display name | The user's display name (≤ 63 UTF-8 bytes). Not an identity: `PlayerID` in `hello` is. |
-| Encryption | `MCEncryptionPreference.required` |
-| Delivery | Every frame is sent `.reliable` |
+| Service type | `_buzzlight._tcp` (Info.plist `NSBonjourServices`) |
+| Who advertises | Host only (`NWListener`). Players browse (`NWBrowser`) and open one connection to the host. |
+| Instance name | The session name, ≤ 63 UTF-8 bytes (Bonjour renames duplicates, e.g. "Sam's game (2)"). |
+| TXT record | `session` → session name shown in the Join list (≤ 120 bytes, default "<name>'s game"); `v` → `Envelope.currentVersion` |
+| Topology | Star: players are connected to the host only. |
+| Links | Same Wi-Fi network, or direct peer-to-peer Wi-Fi (`includePeerToPeer`). Wi-Fi must be switched on; Bluetooth is not used. |
+| Framing | One WebSocket **binary** message per envelope. |
+| Security | TLS-PSK (`TLS_PSK_WITH_AES_128_GCM_SHA256`), identity `buzzlight`, key = SHA-256 of a constant. Changing either breaks compatibility. |
+| Delivery | TCP, reliable and ordered per player; `TCP_NODELAY` on. |
 
-Players read `v` to grey out incompatible hosts in the Join list before trying to connect; the
-invitation context check is the host's backstop.
+Players read `v` to grey out incompatible hosts before connecting; a host that receives a frame
+with another version closes that connection.
+
+The legacy Multipeer transport (DEBUG A/B only, ADR 0001 → 0007) used MC discovery info with the
+same `session`/`v` keys under the service type `buzzlight-mc`, plus a `v=<version>` invitation context.
 
 ## Messages
 
@@ -53,7 +57,7 @@ invitation context check is the host's backstop.
 | `scores` | H→* | `[PlayerID: Int]` | Host awarded points. |
 | `kick` | H→P | — | Player removed. Followed by `roster` to everyone else. |
 | `end` | H→* | — | Session over. |
-| `ping` / `pong` | both | `id: UInt32` | RTT estimation (Stage 4). Receivers answer `ping` with `pong` carrying the same id. |
+| `ping` / `pong` | H→* / P→H | `id: UInt32` | **Heartbeat:** the host pings every player once a second; players answer `pong` with the same id. Either side treats 10–12 s of silence as a dead link. Round-trip times are logged (and are the raw data for ADR 0005). |
 
 ### Types
 

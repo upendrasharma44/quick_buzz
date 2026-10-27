@@ -1,5 +1,4 @@
 import BuzzCore
-import BuzzMultipeer
 import SwiftUI
 
 /// The host's console: round status, live ranking with awards, scoreboard (with kick), and the
@@ -135,7 +134,7 @@ private struct RoundStatus: View {
     }
 
     private var detail: String {
-        if playerCount == 0 { return "Up to \(MultipeerTransport.maxPlayers) players can join." }
+        if playerCount == 0 { return "Up to \(SessionLimits.maxPlayers) players can join." }
         switch phase {
         case .idle: return "Then tap Arm buzzers. Pressing early locks a player out of the round."
         case .armed: return "Waiting for the first buzz."

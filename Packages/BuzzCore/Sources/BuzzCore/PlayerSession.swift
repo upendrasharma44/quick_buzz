@@ -28,11 +28,15 @@ public final class PlayerSession {
     }
 
     public let engine: PlayerEngine
-    public private(set) var phase: Phase = .idle
+    public private(set) var phase: Phase = .idle {
+        didSet { if phase != oldValue { debugLog(.session, "player phase \(oldValue) → \(phase)") } }
+    }
     /// Hosts currently visible, sorted by session name.
     public private(set) var hosts: [DiscoveredHost] = []
     /// Non-fatal problem to show inline (e.g. a failed join). Cleared by the next join attempt.
-    public private(set) var notice: String?
+    public private(set) var notice: String? {
+        didSet { if let notice, notice != oldValue { debugLog(.session, "player notice: \(notice)") } }
+    }
 
     @ObservationIgnored private let transport: any GameTransport
     @ObservationIgnored private let connectTimeout: Duration
@@ -41,6 +45,9 @@ public final class PlayerSession {
     @ObservationIgnored private var eventsTask: Task<Void, Never>?
     @ObservationIgnored private var timeoutTask: Task<Void, Never>?
     @ObservationIgnored private var isBackgrounded = false
+    @ObservationIgnored private let hostSilenceTimeout: Duration
+    @ObservationIgnored private var lastHeardFromHost = ContinuousClock.now
+    @ObservationIgnored private var watchdogTask: Task<Void, Never>?
 
     /// - Parameters:
     ///   - connectTimeout: give up on a join attempt after this long. Keep it above the
@@ -48,19 +55,24 @@ public final class PlayerSession {
     ///   - reconnectTimeout: how long to keep retrying after an unexpected drop, counted only
     ///     while the app is in the foreground.
     ///   - retryDelay: pause before re-inviting the host after a failed reconnect attempt.
+    ///   - hostSilenceTimeout: the host pings every second; after this long without hearing
+    ///     anything the link is treated as dead and dropped, so the reconnect logic takes over
+    ///     instead of buzzes going into a connection only this side still believes in.
     public init(
         playerID: PlayerID,
         name: String,
         transport: any GameTransport,
         connectTimeout: Duration = .seconds(20),
         reconnectTimeout: Duration = .seconds(30),
-        retryDelay: Duration = .seconds(1)
+        retryDelay: Duration = .seconds(1),
+        hostSilenceTimeout: Duration = .seconds(10)
     ) {
         engine = PlayerEngine(id: playerID, name: name)
         self.transport = transport
         self.connectTimeout = connectTimeout
         self.reconnectTimeout = reconnectTimeout
         self.retryDelay = retryDelay
+        self.hostSilenceTimeout = hostSilenceTimeout
     }
 
     public var localPeer: PeerID { transport.localPeer }
@@ -76,6 +88,7 @@ public final class PlayerSession {
 
     public func start() async {
         guard phase == .idle else { return }
+        debugLog(.session, "player start as \(engine.me.name) (\(engine.me.id.short)), transport \(type(of: transport)) \(transport.localPeer)")
         phase = .browsing
         listen()
         await browse()
@@ -83,6 +96,7 @@ public final class PlayerSession {
 
     public func join(_ host: DiscoveredHost) async {
         guard phase == .browsing else { return }
+        debugLog(.session, "player join \(host.id) \"\(host.sessionName)\"")
         guard host.isCompatible else {
             notice = "\(host.sessionName) uses a different version of BuzzLight. Update both phones and try again."
             return
@@ -98,6 +112,7 @@ public final class PlayerSession {
     }
 
     public func leave() async {
+        debugLog(.session, "player leave")
         await finish(.left)
     }
 
@@ -105,8 +120,13 @@ public final class PlayerSession {
     /// main-actor turn as the touch-down that triggered it, and only the send is deferred. Keep it
     /// that way (ADR 0005 will stamp the press here).
     public func buzz() {
-        guard case .joined = phase else { return }
+        guard case .joined = phase else {
+            debugLog(.session, "player buzz IGNORED: phase \(phase)")
+            return
+        }
+        let before = engine.status
         let outbounds = engine.buzz()
+        debugLog(.session, "player buzz pressed: status \(before) → \(engine.status), round \(engine.round.map { "\($0.id) \($0.phase.rawValue)" } ?? "none"), \(outbounds.isEmpty ? "nothing sent" : "sending")")
         guard !outbounds.isEmpty else { return }
         Task { await deliver(outbounds) }
     }
@@ -114,6 +134,7 @@ public final class PlayerSession {
     /// Call when the scene moves to the background. The system drops the connection there, and the
     /// reconnect deadline must not run down while the app is suspended.
     public func sceneDidEnterBackground() {
+        debugLog(.session, "player scene → background (phase \(phase))")
         isBackgrounded = true
         if case .reconnecting = phase { cancelTimeout() }
     }
@@ -121,7 +142,9 @@ public final class PlayerSession {
     /// Call when the scene is active again: give the reconnect a fresh deadline and retry now.
     /// (Browsing itself resumes on its own; the transport handles that.)
     public func sceneDidBecomeActive() async {
+        debugLog(.session, "player scene → active (phase \(phase))")
         isBackgrounded = false
+        lastHeardFromHost = .now  // silence while suspended doesn't count
         guard case .reconnecting(let target) = phase else { return }
         armReconnectTimeout()
         await browse()
@@ -141,6 +164,14 @@ public final class PlayerSession {
     }
 
     private func handle(_ event: TransportEvent) async {
+        if case .message(.ping(let id), let peer, let receivedAt) = event {
+            // Host heartbeat, once a second: answer quietly (kept out of the log).
+            guard case .joined(let target) = phase, target.id == peer else { return }
+            lastHeardFromHost = receivedAt
+            try? await transport.send(.pong(id: id), to: [peer])
+            return
+        }
+        debugLog(.session, "player ← \(event.logDescription)")
         switch event {
         case .hostFound(let found):
             hosts.removeAll { $0.id == found.id }
@@ -159,6 +190,8 @@ public final class PlayerSession {
             case .connecting, .reconnecting:
                 cancelTimeout()
                 phase = .joined(target)
+                lastHeardFromHost = .now
+                startWatchdog(target)
                 await transport.stopBrowsing()
                 await deliver(engine.connected())
             default:
@@ -167,6 +200,7 @@ public final class PlayerSession {
 
         case .peerDisconnected(let peer):
             guard case .joined(let target) = phase, target.id == peer else { return }
+            watchdogTask?.cancel()
             phase = .reconnecting(target)
             hosts = []  // browsing starts over; entries from before the drop may be stale
             if !isBackgrounded { armReconnectTimeout() }
@@ -174,9 +208,14 @@ public final class PlayerSession {
             // The transport holds this until the host is found again.
             try? await transport.connect(to: target.id)
 
-        case .message(let message, let peer, _):
+        case .message(let message, let peer, let receivedAt):
             guard case .joined(let target) = phase, target.id == peer else { return }
-            await deliver(engine.receive(message))
+            lastHeardFromHost = receivedAt
+            let replies = engine.receive(message)
+            if case .welcome = message, replies.contains(where: { if case .buzz = $0.message { true } else { false } }) {
+                debugLog(.session, "player re-sending a buzz the host never got (lost with the old link)")
+            }
+            await deliver(replies)
             switch engine.status {
             case .kicked: await finish(.kicked)
             case .ended: await finish(.hostEnded)
@@ -220,6 +259,7 @@ public final class PlayerSession {
     }
 
     private func connectTimedOut(_ target: DiscoveredHost) {
+        debugLog(.session, "player connect timeout for \(target.id)")
         joinFailed(target, TransportError.connectionFailed(target.id))
     }
 
@@ -227,6 +267,7 @@ public final class PlayerSession {
         Task { [weak self, retryDelay] in
             try? await Task.sleep(for: retryDelay)
             guard let self, self.phase == .reconnecting(target) else { return }
+            debugLog(.session, "player reconnect retry → \(target.id)")
             try? await self.transport.connect(to: target.id)
         }
     }
@@ -234,14 +275,38 @@ public final class PlayerSession {
     private func finish(_ reason: EndReason) async {
         if case .ended = phase { return }
         cancelTimeout()
+        watchdogTask?.cancel()
         if reason == .connectionLost { engine.disconnected() }
         phase = .ended(reason)
         await transport.stop()
         eventsTask?.cancel()
     }
 
+    /// Drops the link if the host goes quiet (it pings every second while hosting).
+    private func startWatchdog(_ target: DiscoveredHost) {
+        watchdogTask?.cancel()
+        let check = min(Duration.seconds(1), hostSilenceTimeout / 4)
+        watchdogTask = Task { [weak self, hostSilenceTimeout] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: check)
+                guard let self, self.phase == .joined(target) else { return }
+                guard !self.isBackgrounded else { continue }
+                let silence = ContinuousClock.now - self.lastHeardFromHost
+                if silence > hostSilenceTimeout {
+                    debugLog(.session, "player: host silent for \(silence); dropping the link")
+                    await self.transport.disconnect(target.id)
+                    return
+                }
+            }
+        }
+    }
+
     private func armReconnectTimeout() {
-        armTimeout(reconnectTimeout) { await $0.finish(.connectionLost) }
+        debugLog(.session, "player reconnect deadline armed (\(reconnectTimeout))")
+        armTimeout(reconnectTimeout) {
+            debugLog(.session, "player reconnect deadline EXPIRED")
+            await $0.finish(.connectionLost)
+        }
     }
 
     private func armTimeout(_ duration: Duration, _ action: @escaping @MainActor (PlayerSession) async -> Void) {
@@ -261,13 +326,32 @@ public final class PlayerSession {
     /// Players only ever talk to the host. Recipients are ignored on purpose: MultipeerConnectivity
     /// links every member of a session, so a "broadcast" would also reach the other players.
     private func deliver(_ outbounds: [Outbound]) async {
-        guard let target = host else { return }
+        guard let target = host else {
+            debugLog(.session, "player send DROPPED (no host, phase \(phase)): \(outbounds.map(\.message.summary))")
+            return
+        }
         for outbound in outbounds {
+            debugLog(.session, "player → \(outbound.message.summary) → \(target.id)")
             do {
                 try await transport.send(outbound.message, to: [target.id])
             } catch {
+                debugLog(.session, "player send FAILED \(outbound.message.summary): \(error)")
                 Log.session.debug("player send failed: \(error.localizedDescription, privacy: .public)")
             }
+        }
+    }
+}
+
+extension PlayerSession.Phase: CustomStringConvertible {
+    /// Compact form for the debug log, e.g. `connecting(Hana's game#1)`.
+    public var description: String {
+        switch self {
+        case .idle: "idle"
+        case .browsing: "browsing"
+        case .connecting(let host): "connecting(\(host.id))"
+        case .joined(let host): "joined(\(host.id))"
+        case .reconnecting(let host): "reconnecting(\(host.id))"
+        case .ended(let reason): "ended(\(reason))"
         }
     }
 }

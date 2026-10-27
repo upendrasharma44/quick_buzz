@@ -13,7 +13,7 @@ tests and docs → PR referencing the issue → merge → update status → clos
 |---|---|---|---|---|
 | 0 | Scaffold & plan tracking | [#1](https://github.com/upendrasharma44/quick_buzz/issues/1) | ✅ Done (2026-10-25) | — |
 | 1 | Domain core (engines, protocol, loopback) | [#2](https://github.com/upendrasharma44/quick_buzz/issues/2) | ✅ Done (2026-10-25) | — |
-| 2 | Discovery & lobby over Multipeer | [#3](https://github.com/upendrasharma44/quick_buzz/issues/3) | 🔧 Built, awaiting 2-phone test | v0.2 (dev) |
+| 2 | Discovery & lobby over Multipeer | [#3](https://github.com/upendrasharma44/quick_buzz/issues/3) | 🔧 Transport replaced (ADR 0007); awaiting device connectivity matrix | v0.2 (dev) |
 | 3 | Buzz rounds | [#4](https://github.com/upendrasharma44/quick_buzz/issues/4) | 🔧 Built; awaiting 3-phone test + App Store submission | **v1.0 free** |
 | 4 | Robustness & fairness polish | [#5](https://github.com/upendrasharma44/quick_buzz/issues/5) | ⬜ Not started | v1.x |
 | 5 | Plus tier (StoreKit 2, $0.99/yr) | [#6](https://github.com/upendrasharma44/quick_buzz/issues/6) | ⬜ Not started | v1.2 |
@@ -37,7 +37,7 @@ and internet rooms.
 
 | Capability | Free | Plus ($0.99 / year) |
 |---|---|---|
-| Local play (Wi-Fi, peer-to-peer Wi-Fi, Bluetooth via Multipeer) | ✅ unlimited | ✅ |
+| Local play (same Wi-Fi network, or direct phone-to-phone Wi-Fi) | ✅ unlimited | ✅ |
 | Display name, in-session scores | ✅ | ✅ |
 | Email account | — | ✅ (Stage 6) |
 | Saved sessions, previous sessions, round history | — | ✅ (Stage 6) |
@@ -77,7 +77,10 @@ Built on 2026-10-25; the stage closes once the two-phone script in `docs/testing
 - App: name onboarding + persisted `PlayerID`, Home, Host lobby (live roster, kick, end), Join
   browser (nearby games, Local Network hint), player waiting screen, end screens, Settings
   (rename), keep-awake during games, DEBUG demo mode with simulated players.
-- Remaining: run the two-phone script on hardware and record the results in #3.
+- Device test (2026-10-25): Multipeer only connected phones on the same Wi-Fi network; Bluetooth-only
+  never works (MC dropped Bluetooth in iOS 11). Replaced by a Network.framework transport with direct
+  peer-to-peer Wi-Fi (ADR 0007, package `BuzzNetwork`); Multipeer kept for DEBUG A/B only.
+- Remaining: the connectivity matrix and two-phone script in `docs/testing.md` on hardware, results in #3.
 
 ### Stage 3 — Buzz rounds → v1.0 free release 🔧
 Built on 2026-10-25 (ranking stays host arrival order; ADR 0005 follows in Stage 4 by decision).
@@ -111,8 +114,8 @@ local (SwiftData) and cloud implementations, Previous sessions UI, account delet
 
 ### Stage 7 — Internet rooms & other transports
 `BuzzRelay` package: `GameTransport` over Firebase Realtime Database (or a WebSocket relay after a
-latency spike), room code / QR join, transport picker (Nearby free / Online Plus), Bluetooth-only
-nearby play verified.
+latency spike), room code / QR join, transport picker (Nearby free / Online Plus), Bluetooth-only nearby play would need a Core Bluetooth transport (Multipeer dropped
+Bluetooth in iOS 11; ADR 0007).
 
 ## Backlog (unscheduled)
 - Team mode (buzz on behalf of a team, team scores)

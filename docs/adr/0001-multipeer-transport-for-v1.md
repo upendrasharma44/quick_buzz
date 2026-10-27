@@ -1,6 +1,6 @@
 # ADR 0001: MultipeerConnectivity behind a transport protocol for v1
 
-- Status: Accepted
+- Status: Superseded by [ADR 0007](0007-network-framework-transport.md) (2026-10-25)
 - Date: 2026-10-25
 
 ## Context
@@ -26,7 +26,8 @@ protocol defined in `BuzzCore`. Engines never see MC types.
 
 - Discovery, invitations, session management and reliable framing come for free.
 - MC also works over peer-to-peer Wi-Fi and Bluetooth, so "no router" play is a documentation
-  item, not a feature.
+  item, not a feature. **Wrong in practice (found 2026-10-25):** MC has not used Bluetooth since
+  iOS 11, and on current iOS it only connected phones on the same Wi-Fi network. See ADR 0007.
 - Requires `NSLocalNetworkUsageDescription` and `NSBonjourServices` (`_quickbuzz._tcp`,
   `_quickbuzz._udp`) in Info.plist; without them discovery fails silently.
 - MC sessions suspend when the app is backgrounded; the session layer must handle reconnects

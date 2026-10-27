@@ -22,6 +22,8 @@ jobs:
         run: swift test --package-path Packages/BuzzCore
       - name: BuzzMultipeer
         run: swift test --package-path Packages/BuzzMultipeer
+      - name: BuzzNetwork
+        run: swift test --package-path Packages/BuzzNetwork
 
   app:
     name: App build + tests (iOS Simulator)
