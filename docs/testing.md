@@ -39,9 +39,11 @@ xcrun simctl io booted screenshot host.png
 ```
 
 `scripts/screenshots.sh [simulator] [dir]` builds a Debug app, warms it up and captures the six App
-Store screenshots (host results, player winner, player live, host scores, join list, too early) at
-the 6.9" size into `docs/app-store/screenshots/`. Waits are tuned to `DemoHub.Timing.standard`;
-if you change those timings, re-check the shots.
+Store screenshots (host results, player winner, player live, host scores, join list, too early)
+into `docs/app-store/screenshots/<simulator name in kebab-case>/` and removes their alpha channel.
+The default simulator, iPhone 17, gives the required 1206 × 2622 size; pass `"iPhone 17 Pro Max"`
+for the optional 1320 × 2868 set. Waits are tuned to `DemoHub.Timing.standard`; if you change
+those timings, re-check the shots.
 
 ## Manual: two or more physical devices
 

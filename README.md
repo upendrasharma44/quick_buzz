@@ -57,8 +57,9 @@ xcodebuild test -project BuzzLight.xcodeproj -scheme BuzzLight \
 | `Packages/BuzzNetwork` | Network.framework transport: Bonjour discovery, TLS WebSocket connections, direct Wi-Fi |
 | `Config/` | Build settings; per-machine `Local.xcconfig` (git-ignored) |
 | `design/icon/` | App icon source; run `design/icon/make-icon.sh` (needs `librsvg`) to regenerate light/dark/tinted PNGs |
+| `design/header/` | Optional App Store product page header (3840 × 1646); `python3 design/header/make-header.py` regenerates it |
 | `design/sound/` | Buzzer sound source; `python3 design/sound/make-sounds.py` regenerates `App/Resources/Sounds/buzz.wav` |
-| `scripts/` | `screenshots.sh`: App Store screenshots from the simulator demo · `fetch-logs.sh`: pull debug logs from phones |
+| `scripts/` | `screenshots.sh`: App Store screenshots from the simulator demo · `flatten-png.swift`: strip alpha from PNGs · `fetch-logs.sh`: pull debug logs from phones |
 | `docs/` | [Roadmap](docs/roadmap.md) · [Architecture](docs/architecture.md) · [Protocol](docs/protocol.md) · [Testing](docs/testing.md) · [Release](docs/release.md) · [App Store](docs/app-store/) · [ADRs](docs/adr/) |
 
 App Store: _link added after approval_.

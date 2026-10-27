@@ -21,12 +21,34 @@ holder (App Store Connect / Xcode signed in as the developer); everything else c
 2. **Green build.** CI green on `main`; locally:
    `swift test --package-path Packages/BuzzCore`, `swift test --package-path Packages/BuzzNetwork`,
    `xcodebuild test -project BuzzLight.xcodeproj -scheme BuzzLight -destination 'platform=iOS Simulator,name=iPhone 17'`.
-3. **Screenshots** (when UI changed): `scripts/screenshots.sh` → `docs/app-store/screenshots/`.
+3. **Screenshots** (when UI changed): `scripts/screenshots.sh` (iPhone 17, the required
+   1206 × 2622 slot) and `scripts/screenshots.sh "iPhone 17 Pro Max"` (optional 1320 × 2868 slot)
+   → `docs/app-store/screenshots/<device>/`; which folder goes in which App Store Connect slot is in
+   `docs/app-store/metadata.md` → Screenshots.
    Check them, commit.
 4. **Device test.** Run the stage scripts in `docs/testing.md` on ≥ 3 real iPhones; record the
    results in the stage issue.
-5. 👤 **Archive & upload.** Xcode → select *Any iOS Device (arm64)* → Product → Archive →
-   Organizer → Distribute App → App Store Connect → Upload.
+5. **Archive & upload.** From the repo root, with Xcode signed in to the developer account
+   (Claude can run this on request; it sends the build to App Store Connect, so confirm first):
+
+   ```sh
+   xcodegen generate
+   ARCHIVE=$(mktemp -d)/BuzzLight.xcarchive
+   xcodebuild -project BuzzLight.xcodeproj -scheme BuzzLight -configuration Release \
+     -destination 'generic/platform=iOS' -archivePath "$ARCHIVE" -allowProvisioningUpdates archive
+   env PATH="/usr/bin:/bin:/usr/sbin:/sbin" xcodebuild -exportArchive -archivePath "$ARCHIVE" \
+     -exportOptionsPlist Config/ExportOptions.plist -exportPath "$(mktemp -d)" -allowProvisioningUpdates
+   ```
+
+   `Config/ExportOptions.plist` signs for App Store Connect and uploads directly; the team comes
+   from `Config/Local.xcconfig`. The `PATH` override matters: a Homebrew `rsync` (3.x) earlier on
+   `PATH` makes the export fail with "exportArchive Copy failed" (`rsync error: syntax or usage
+   error` in the `.xcdistributionlogs`). It ends with `Upload succeeded`; processing then takes up
+   to an hour. GUI alternative: Xcode → *Any iOS Device (arm64)* → Product → Archive → Organizer →
+   Distribute App → App Store Connect → Upload.
+   👤 Then App Store Connect → the version → **Build** → **+** → pick the build → Save. The app
+   icon on the product page preview comes from this build; until one is attached it shows a grid
+   placeholder.
 6. 👤 **TestFlight.** Add the build to an internal group (≥ 3 testers), answer export compliance
    (exempt; see `metadata.md`). Fix anything they find, back to step 1.
 7. 👤 **Submit.** App Store Connect → the version → select the build, paste screenshots, text and
@@ -39,4 +61,4 @@ holder (App Store Connect / Xcode signed in as the developer); everything else c
 
 | Version | Build | Date | Notes |
 |---|---|---|---|
-| 1.0.0 | 1 | — | Stage 3: first App Store release (pending) |
+| 1.0.0 | 1 | 2026-10-27 uploaded | Stage 3: first App Store release (uploaded via `xcodebuild -exportArchive`; review pending) |
